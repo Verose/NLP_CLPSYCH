@@ -1,7 +1,3 @@
 .idea/
-word_embeddings/hebrew/all_data.csv
-word_embeddings/hebrew/hewiki-latest-pages-articles.xml.bz2
-word_embeddings/hebrew/lexicon2018_all.csv
 word_embeddings/hebrew/saved_data/
-word_embeddings/hebrew/wiki_hebrew_corpus_word2vec.model
-word_embeddings/hebrew/wiki_hebrew_corpus.txt
+word_embeddings/hebrew/data/
