@@ -1,4 +1,4 @@
 .idea/
-word_embeddings/hebrew/saved_data/
-word_embeddings/hebrew/data/
+word_embeddings/data/saved_data/
+word_embeddings/data/
 venv/

@@ -11,7 +11,7 @@ if __name__ == '__main__':
     space = " "
     print("Starting to create data corpus")
 
-    with open(os.path.join('data', "wiki_hebrew_corpus.txt"), 'w', encoding="utf-8") as output:
+    with open(os.path.join('..', 'data', "wiki_hebrew_corpus.txt"), 'w', encoding="utf-8") as output:
         wiki_counter = 0
         print("Adding articles from wiki corpus")
         wiki = WikiCorpus("hewiki-latest-pages-articles.xml.bz2", lemmatize=False, dictionary={})
@@ -27,7 +27,7 @@ if __name__ == '__main__':
         csv_counter = 0
         print("Adding records from medical corpus")
 
-        with open(os.path.join('data', "all_data.csv"), encoding="utf-8") as file:
+        with open(os.path.join('..', 'data', "all_data.csv"), encoding="utf-8") as file:
             csv_file = csv.reader(file)
 
             # skip first 2 rows
