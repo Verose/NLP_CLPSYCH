@@ -1,11 +1,14 @@
 import json
 import os
-import pandas as pd
 import string
+import warnings
 
-from gensim.models.wrappers import FastText
+import pandas as pd
 
 from word_embeddings.cosine_similarity.CosineSimilarity import CosineSimilarity
+
+warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
+from gensim.models.wrappers import FastText
 
 
 def get_medical_data():
@@ -34,3 +37,7 @@ if __name__ == '__main__':
 
     cosine_calcs = CosineSimilarity(model, data, conf['size'])
     cosine_calcs.calculate_all_avg_scores()
+
+    control_score = cosine_calcs.calculate_avg_score_for_group('control')
+    patients_score = cosine_calcs.calculate_avg_score_for_group('patients')
+    print('Scores: Control: {}, Patients: {}'.format(control_score, patients_score))
