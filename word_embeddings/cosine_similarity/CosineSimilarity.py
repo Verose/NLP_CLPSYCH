@@ -8,7 +8,7 @@ from tqdm import tqdm
 logger = logging.getLogger('CosineSimilarity')
 logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
 logger.addHandler(logging.StreamHandler(sys.stdout))
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class CosineSimilarity:
@@ -27,7 +27,7 @@ class CosineSimilarity:
         """
 
         # iterate users
-        for index, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data)):
+        for index, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False):
             user_id = row[0]
             label = row[1]
             scores = []
@@ -35,10 +35,12 @@ class CosineSimilarity:
             for answer in row[2:]:
                 # some users didn't answer all of the questions
                 if not answer or answer is pd.np.nan:
+                    logger.debug('skipping empty answer for user: {}'.format(user_id))
                     continue
                 answer = answer.split()
                 # skip short answers
                 if len(answer) < self._window_size + 1:
+                    logger.debug('skipping short answer of length: {} for user: {}'.format(len(answer), user_id))
                     continue
 
                 score = self.avg_answer_score(answer)
@@ -52,7 +54,6 @@ class CosineSimilarity:
             else:
                 self._patient_scores += [(avg_user_score, user_id)]
 
-        logger.info('success! finished')
         return self._labels_to_scores
 
     def calculate_avg_score_for_group(self, group='control'):
@@ -75,7 +76,7 @@ class CosineSimilarity:
                 replacement_word = '<אות ומספר>'
             else:
                 replacement_word = '<לא ידוע>'
-            logger.info('word: {} replaced with: {}'.format(word, replacement_word))
+            logger.debug('word: {} replaced with: {}'.format(word, replacement_word))
             return self._model[replacement_word]
 
     def avg_answer_score(self, answer):

@@ -35,9 +35,10 @@ if __name__ == '__main__':
     conf = read_conf()
     model = FastText.load_fasttext_format(os.path.join('..', 'data', 'FastText-pretrained-hebrew', 'wiki.he.bin'))
 
-    cosine_calcs = CosineSimilarity(model, data, conf['size'])
-    cosine_calcs.calculate_all_avg_scores()
+    for win_size in range(1, conf['size']+1):
+        cosine_calcs = CosineSimilarity(model, data, win_size)
+        cosine_calcs.calculate_all_avg_scores()
 
-    control_score = cosine_calcs.calculate_avg_score_for_group('control')
-    patients_score = cosine_calcs.calculate_avg_score_for_group('patients')
-    print('Scores: Control: {}, Patients: {}'.format(control_score, patients_score))
+        control_score = cosine_calcs.calculate_avg_score_for_group('control')
+        patients_score = cosine_calcs.calculate_avg_score_for_group('patients')
+        print('Scores for window size {}: \nControl: {}, Patients: {}'.format(win_size, control_score, patients_score))
