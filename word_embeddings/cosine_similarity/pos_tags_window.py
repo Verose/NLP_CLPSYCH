@@ -1,31 +1,34 @@
+import glob
+import json
 import logging
+import os
 import sys
 
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
-logger = logging.getLogger('CosineSimilarity')
+from word_embeddings.cosine_similarity.sliding_window import SlidingWindow
+from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word
+
+logger = logging.getLogger('SlidingWindow')
 logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
 logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.INFO)
 
 
-class CosineSimilarity:
-    def __init__(self, model, data, window_size):
+class POSSlidingWindow(SlidingWindow):
+    def __init__(self, model, data, window_size, data_dir):
         self._model = model
         self._data = data
         self._window_size = window_size
-        self._labels_to_scores = {}
-        self._control_scores = []
-        self._patient_scores = []
+        self._data_dir = data_dir
+
+        self._answers_to_user_id_pos_tags = {}
+
+        self._read_answers_pos_tags()
 
     def calculate_all_avg_scores(self):
-        """
-        Calculate the cosine similarity of the entire corpus
-        :return:
-        """
-
         # iterate users
         for index, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False):
             user_id = row[0]
@@ -43,7 +46,7 @@ class CosineSimilarity:
                     logger.debug('skipping short answer of length: {} for user: {}'.format(len(answer), user_id))
                     continue
 
-                score = self.avg_answer_score(answer)
+                score = self.avg_answer_score_by_window(answer)
                 scores += [score]
 
             avg_user_score = sum(scores) / len(scores)
@@ -64,41 +67,34 @@ class CosineSimilarity:
             patient_scores = [score[0] for score in self._patient_scores]
             return sum(patient_scores) / len(patient_scores)
 
-    def _get_vector_repr_of_word(self, word):
-        try:
-            return self._model[word]
-        except KeyError:
-            if str.isdecimal(word):
-                replacement_word = '<מספר>'
-            elif str.isalpha(word):
-                replacement_word = '<אנגלית>'
-            elif any(i.isdigit() for i in word) and any("\u0590" <= c <= "\u05EA" for c in word):
-                replacement_word = '<אות ומספר>'
-            else:
-                replacement_word = '<לא ידוע>'
-            logger.debug('word: {} replaced with: {}'.format(word, replacement_word))
-            return self._model[replacement_word]
+    def _read_answers_pos_tags(self):
+        json_pattern = os.path.join(self._data_dir, 'answers_pos_tags', '*.json')
+        json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
 
-    def avg_answer_score(self, answer):
-        """
-        Calculate the cosine similarity of an answer
-        :param answer: array of string representing an answer
-        :return: cosine similarity score
-        """
+        for file in json_files:
+            with open(file, encoding='utf-8') as f:
+                ans_pos_tags = json.load(f)
+                self._answers_to_user_id_pos_tags[os.path.basename(file).split('.')[0]] = ans_pos_tags
 
+    def _avg_answer_score_by_pos_tags(self, answer):
+        """
+        Calculate the cosine similarity of an answer using POS tags
+        Only considering “content words” - nouns, verbs, adjectives and adverbs
+        :return:
+        """
         scores = []
 
         for pos, word in enumerate(answer):
             if pos + self._window_size >= len(answer):
                 break
 
-            word_vector = self._get_vector_repr_of_word(word)
+            word_vector = get_vector_repr_of_word(self._model, word, logger)
             score = 0
 
             # calculate cosine similarity for window
             for dist in range(1, self._window_size + 1):
                 context = answer[pos + dist]
-                context_vector = self._get_vector_repr_of_word(context)
+                context_vector = get_vector_repr_of_word(self._model, context, logger)
                 score += cosine_similarity([word_vector], [context_vector])[0][0]
 
             score /= self._window_size
