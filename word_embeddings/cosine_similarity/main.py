@@ -1,14 +1,24 @@
 import json
+import logging
 import os
 import string
 import warnings
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from word_embeddings.cosine_similarity.cosine_similarity import CosineSimilarity
 
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 from gensim.models.wrappers import FastText
+
+output_dir = os.path.join('..', 'outputs')
+logger = logging.getLogger('Main')
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler(filename=os.path.join(output_dir, 'main_outputs.txt'))
+formatter = logging.Formatter("[%(asctime)s][%(name)s][%(levelname)s] %(message)s", '%H:%M:%S')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 
 def get_medical_data():
@@ -32,13 +42,42 @@ def read_conf():
 
 
 def average_cosine_similarity_several_window_sizes():
+    logger.info('starting to calculate:')
+
     for win_size in range(1, conf['size'] + 1):
+        logger.info('calculating for window size {}'.format(win_size))
         cosine_calcs = CosineSimilarity(model, data, conf['mode'], win_size, data_dir)
         cosine_calcs.calculate_all_avg_scores()
 
         control_score = cosine_calcs.calculate_avg_score_for_group('control')
         patients_score = cosine_calcs.calculate_avg_score_for_group('patients')
-        print('Scores for window size {}: \nControl: {}, Patients: {}'.format(win_size, control_score, patients_score))
+        logger.info('Scores for window size {}: \nControl: {}, Patients: {}'.format(
+            win_size, control_score, patients_score))
+
+        plot_control_patients_score_by_question(cosine_calcs, win_size)
+
+
+def plot_control_patients_score_by_question(cosine_calcs, win_size):
+    control_user_score_by_question, patient_user_score_by_question = cosine_calcs.get_user_to_question_scores()
+    calc_Xy_by_question_and_plot(control_user_score_by_question, marker='*', c='red')
+    calc_Xy_by_question_and_plot(patient_user_score_by_question, marker='.', c='blue')
+
+    plt.xlabel('questions')
+    plt.ylabel('cos sim scores')
+    plt.xticks(range(1, 19))
+    plt.title('Cosine Similarity Scores Per-User Per-Question For Window Size: {}'.format(win_size))
+    plt.savefig(os.path.join(output_dir, "cos_sim_per_question_win{}.png".format(win_size)))
+    plt.show()
+
+
+def calc_Xy_by_question_and_plot(control_user_score_by_question, marker, c):
+    for user_to_score in control_user_score_by_question.values():
+        X = []
+        y = []
+        for question, score in user_to_score.items():
+            X += [question]
+            y += [score]
+        plt.plot(X, y, marker=marker, c=c)
 
 
 if __name__ == '__main__':

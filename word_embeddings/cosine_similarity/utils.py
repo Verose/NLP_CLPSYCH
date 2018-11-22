@@ -1,5 +1,5 @@
 
-def get_vector_repr_of_word(model, word, logger):
+def get_vector_repr_of_word(model, word):
     try:
         return model[word]
     except KeyError:
@@ -11,5 +11,4 @@ def get_vector_repr_of_word(model, word, logger):
             replacement_word = '<אות ומספר>'
         else:
             replacement_word = '<לא ידוע>'
-        logger.debug('word: {} replaced with: {}'.format(word, replacement_word))
         return model[replacement_word]
