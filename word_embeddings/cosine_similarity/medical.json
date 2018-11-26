@@ -2,5 +2,10 @@
   "window": {
     "size": 4
   },
-  "mode": "pos"
+  "mode": {
+    "type": "pos",
+    "extras" : {
+      "pos": "noun, verb, adverb, adjective"
+    }
+  }
 }

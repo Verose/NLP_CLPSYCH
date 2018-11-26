@@ -37,24 +37,28 @@ def read_conf():
     json_file = open('medical.json').read()
     json_data = json.loads(json_file, encoding='utf-8')
     cfg['size'] = json_data['window']['size']
-    cfg['mode'] = json_data['mode']
+    cfg['mode'] = json_data['mode']['type']
+    cfg['extras'] = json_data['mode']['extras']
     return cfg
 
 
 def average_cosine_similarity_several_window_sizes():
-    logger.info('starting to calculate:')
-
     for win_size in range(1, conf['size'] + 1):
-        logger.info('calculating for window size {}'.format(win_size))
-        cosine_calcs = CosineSimilarity(model, data, conf['mode'], win_size, data_dir)
+        cosine_calcs = CosineSimilarity(model, data, conf['mode'], conf['extras'], win_size, data_dir)
         cosine_calcs.calculate_all_avg_scores()
 
         control_score = cosine_calcs.calculate_avg_score_for_group('control')
         patients_score = cosine_calcs.calculate_avg_score_for_group('patients')
-        logger.info('Scores for window size {}: \nControl: {}, Patients: {}'.format(
-            win_size, control_score, patients_score))
+        logger.info('Scores for window size {}: '.format(win_size))
+        logger.info('Control: {}, Patients: {}'.format(control_score, patients_score))
 
         plot_control_patients_score_by_question(cosine_calcs, win_size)
+
+        if conf['mode'] == 'pos':
+            control_repetitions = cosine_calcs.calculate_repetitions_for_group('control')
+            patients_repetitions = cosine_calcs.calculate_repetitions_for_group('patients')
+            logger.info('Word repetitions average using {}: Control: {}, Patients: {}'
+                        .format(conf['extras']['pos'], control_repetitions, patients_repetitions))
 
 
 def plot_control_patients_score_by_question(cosine_calcs, win_size):
@@ -70,14 +74,14 @@ def plot_control_patients_score_by_question(cosine_calcs, win_size):
     plt.show()
 
 
-def calc_Xy_by_question_and_plot(control_user_score_by_question, marker, c):
-    for user_to_score in control_user_score_by_question.values():
+def calc_Xy_by_question_and_plot(user_score_by_question, marker, c):
+    for user_to_score in user_score_by_question.values():
         X = []
         y = []
         for question, score in user_to_score.items():
             X += [question]
             y += [score]
-        plt.plot(X, y, marker=marker, c=c)
+        plt.scatter(X, y, marker=marker, c=c)
 
 
 if __name__ == '__main__':

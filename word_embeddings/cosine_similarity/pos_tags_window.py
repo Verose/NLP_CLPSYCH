@@ -12,12 +12,15 @@ from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word
 
 
 class POSSlidingWindow(SlidingWindow):
-    def __init__(self, model, data, window_size, data_dir):
+    def __init__(self, model, data, window_size, extras, data_dir):
         self._data_dir = data_dir
+        self._pos_tags_to_filter_in = extras['pos']
 
         self._answers_to_user_id_pos_data = {}
         self._control_users_to_question_scores = {}
         self._patient_users_to_question_scores = {}
+        self._control_repetitions = []
+        self._patient_repetitions = []
 
         self._read_answers_pos_tags()
         super().__init__(model, data, window_size)
@@ -31,16 +34,19 @@ class POSSlidingWindow(SlidingWindow):
             user_id = row[0]
             label = row[1]
 
-            scores = self._user_avg_scores(user_id)
+            scores, repetitions = self._user_avg_scores(user_id)
             avg_user_score = sum(scores.values()) / len(scores.values())
+            avg_repetitions = sum(repetitions.values())
             self._labels_to_scores[user_id] = (avg_user_score, label)
 
             if label == 'control':
                 self._control_users_to_question_scores[user_id] = scores
                 self._control_scores += [(avg_user_score, user_id)]
+                self._control_repetitions += [(avg_repetitions, user_id)]
             else:
                 self._patient_users_to_question_scores[user_id] = scores
                 self._patient_scores += [(avg_user_score, user_id)]
+                self._patient_repetitions += [(avg_repetitions, user_id)]
 
         return self._labels_to_scores
 
@@ -52,9 +58,18 @@ class POSSlidingWindow(SlidingWindow):
             patient_scores = [score[0] for score in self._patient_scores]
             return sum(patient_scores) / len(patient_scores)
 
+    def calculate_repetitions_for_group(self, group='control'):
+        if group == 'control':
+            control_repetitions = [rep[0] for rep in self._control_repetitions]
+            return sum(control_repetitions) / len(control_repetitions)
+        else:
+            patient_repetitions = [rep[0] for rep in self._patient_repetitions]
+            return sum(patient_repetitions) / len(patient_repetitions)
+
     def _user_avg_scores(self, user_id):
         skip = []
         scores = {}
+        repetitions = {}
 
         # iterate answers
         for answer_num, users_pos_data in sorted(self._answers_to_user_id_pos_data.items()):
@@ -66,15 +81,17 @@ class POSSlidingWindow(SlidingWindow):
                 skip += [answer_num]
                 continue
 
-            score = self._avg_answer_score_by_pos_tags(user_pos_data['tokens'], user_pos_data['posTags'])
+            score, rep = self._avg_answer_score_by_pos_tags(user_pos_data['tokens'], user_pos_data['posTags'])
             scores[answer_num] = score
+            repetitions[answer_num] = rep
 
         if skip:
             mean = sum(scores.values()) / len(scores.values())
             for ans in skip:
                 scores[ans] = mean
+                repetitions[ans] = 0
 
-        return scores
+        return scores, repetitions
 
     def _read_answers_pos_tags(self):
         json_pattern = os.path.join(self._data_dir, 'answers_pos_tags', '*.json')
@@ -92,6 +109,7 @@ class POSSlidingWindow(SlidingWindow):
         :return:
         """
         scores = []
+        repetitions = []
         valid_words = []
         valid_pos_tags = []
 
@@ -102,7 +120,7 @@ class POSSlidingWindow(SlidingWindow):
             valid_pos_tags += [pos_tag]
 
         if not valid_words:
-            return 0
+            return 0, 0
 
         for pos, (word, pos_tag) in enumerate(zip(valid_words, valid_pos_tags)):
             if pos + self._window_size >= len(valid_words):
@@ -110,6 +128,7 @@ class POSSlidingWindow(SlidingWindow):
 
             word_vector = get_vector_repr_of_word(self._model, word)
             score = 0
+            rep = 0
 
             # calculate cosine similarity for window
             for dist in range(1, self._window_size + 1):
@@ -117,20 +136,24 @@ class POSSlidingWindow(SlidingWindow):
                 context_vector = get_vector_repr_of_word(self._model, context)
                 score += cosine_similarity([word_vector], [context_vector])[0][0]
 
+                if word == context:
+                    rep += 1
+
             score /= self._window_size
             scores += [score]
+            repetitions += [rep]
 
-        return sum(scores) / len(scores) if len(scores) > 0 else 0
+        ret_score = sum(scores) / len(scores) if len(scores) > 0 else 0
+        return ret_score, sum(repetitions)
 
-    @staticmethod
-    def _should_skip(word, pos_tag):
+    def _should_skip(self, word, pos_tag):
         """
-        Should skip words which are not noun/verb/adverb/adjective, and punctuation marks
+        Should skip specific pos tags (e.g. noun/verb/adverb/adjective), and punctuation marks
         :param word: str
         :param pos_tag: str
         :return: True/False
         """
-        if not (pos_tag == 'noun' or pos_tag == 'verb' or pos_tag == 'adverb' or pos_tag == 'adjective'):
+        if pos_tag not in self._pos_tags_to_filter_in:
             return True
         if word in string.punctuation:
             return True

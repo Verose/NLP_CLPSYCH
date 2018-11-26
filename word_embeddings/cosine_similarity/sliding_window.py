@@ -10,10 +10,11 @@ from logging.handlers import RotatingFileHandler
 class SlidingWindow(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, model, data, window_size):
+    def __init__(self, model, data, window_size, extras=None):
         self._model = model
         self._data = data
         self._window_size = window_size
+        self._extras = extras
         self._logger = self._setup_logger()
 
         self._labels_to_scores = {}

@@ -11,13 +11,13 @@ logger.setLevel(logging.INFO)
 
 
 class CosineSimilarity:
-    def __init__(self, model, data, mode, window_size, data_dir=None):
+    def __init__(self, model, data, mode, extras, window_size, data_dir=None):
         self._avg_cosine_sim = None
 
         if mode == "sliding_window":
-            self._avg_cosine_sim = BasicSlidingWindow(model, data, window_size)
+            self._avg_cosine_sim = BasicSlidingWindow(model, data, window_size, extras)
         elif mode == "pos":
-            self._avg_cosine_sim = POSSlidingWindow(model, data, window_size, data_dir)
+            self._avg_cosine_sim = POSSlidingWindow(model, data, window_size, extras, data_dir)
 
     def get_user_to_question_scores(self):
         return self._avg_cosine_sim.get_user_to_question_scores()
@@ -27,3 +27,6 @@ class CosineSimilarity:
 
     def calculate_avg_score_for_group(self, group='control'):
         return self._avg_cosine_sim.calculate_avg_score_for_group(group)
+
+    def calculate_repetitions_for_group(self, group='control'):
+        return self._avg_cosine_sim.calculate_repetitions_for_group(group)
