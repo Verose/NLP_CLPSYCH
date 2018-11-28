@@ -5,7 +5,7 @@
   "mode": {
     "type": "pos",
     "extras" : {
-      "pos": "noun"
+      "pos": "noun verb adverb adjective"
     }
   },
   "output": {

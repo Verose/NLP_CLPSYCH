@@ -1,13 +1,8 @@
-import json
 import logging
-import os
-import string
 import warnings
 
-import matplotlib.pyplot as plt
-import pandas as pd
-
 from word_embeddings.cosine_similarity.cosine_similarity import CosineSimilarity
+from word_embeddings.cosine_similarity.utils import *
 
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 from gensim.models.wrappers import FastText
@@ -19,28 +14,6 @@ file_handler = logging.FileHandler(filename=os.path.join(output_dir, 'main_outpu
 formatter = logging.Formatter("%(message)s", '%H:%M:%S')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
-
-
-def get_medical_data():
-    medical_data = pd.read_csv(os.path.join(data_dir, 'all_data.csv'))
-    medical_data = medical_data.iloc[1:]  # remove first row
-
-    # remove punctuation
-    for column in medical_data:
-        medical_data[column] = medical_data[column].str.replace('[{}]'.format(string.punctuation), '')
-
-    return medical_data
-
-
-def read_conf():
-    cfg = {}
-    json_file = open('medical.json').read()
-    json_data = json.loads(json_file, encoding='utf-8')
-    cfg['size'] = json_data['window']['size']
-    cfg['mode'] = json_data['mode']['type']
-    cfg['extras'] = json_data['mode']['extras']
-    cfg['plot'] = json_data['output']['plot']
-    return cfg
 
 
 def average_cosine_similarity_several_window_sizes():
@@ -89,25 +62,9 @@ def plot_control_patients_score_by_question(cosine_calcs, win_size):
     plt.show()
 
 
-def calc_Xy_by_question_and_plot(user_score_by_question, marker, c, label):
-    X = []
-    y = []
-
-    for user_to_score in user_score_by_question.values():
-        questions = []
-        scores = []
-        for question, score in user_to_score.items():
-            questions += [question]
-            scores += [score]
-        X += [questions]
-        y += [scores]
-
-    plt.scatter(X, y, marker=marker, c=c, label=label)
-
-
 if __name__ == '__main__':
     data_dir = os.path.join('..', 'data')
-    data = get_medical_data()
+    data = get_medical_data(data_dir)
     conf = read_conf()
     model = FastText.load_fasttext_format(os.path.join(data_dir, 'FastText-pretrained-hebrew', 'wiki.he.bin'))
 
