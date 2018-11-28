@@ -30,3 +30,6 @@ class CosineSimilarity:
 
     def calculate_repetitions_for_group(self, group='control'):
         return self._avg_cosine_sim.calculate_repetitions_for_group(group)
+
+    def calculate_items_for_group(self, group='control'):
+        return self._avg_cosine_sim.calculate_items_for_group(group)

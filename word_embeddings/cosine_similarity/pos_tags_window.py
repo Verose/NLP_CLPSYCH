@@ -21,6 +21,8 @@ class POSSlidingWindow(SlidingWindow):
         self._patient_users_to_question_scores = {}
         self._control_repetitions = []
         self._patient_repetitions = []
+        self._control_items = []
+        self._patient_items = []
 
         self._read_answers_pos_tags()
         super().__init__(model, data, window_size)
@@ -34,21 +36,22 @@ class POSSlidingWindow(SlidingWindow):
             user_id = row[0]
             label = row[1]
 
-            scores, repetitions = self._user_avg_scores(user_id)
+            averages = self._user_avg_scores(user_id)
+            scores, repetitions, items = averages['scores'], averages['repetitions'], averages['items']
             avg_user_score = sum(scores.values()) / len(scores.values())
-            avg_repetitions = sum(repetitions.values())
-            self._labels_to_scores[user_id] = (avg_user_score, label)
+            avg_repetitions = sum(repetitions.values()) / len(repetitions.values())
+            avg_items = sum(items.values()) / len(items.values())
 
             if label == 'control':
                 self._control_users_to_question_scores[user_id] = scores
                 self._control_scores += [(avg_user_score, user_id)]
                 self._control_repetitions += [(avg_repetitions, user_id)]
+                self._control_items += [(avg_items, user_id)]
             else:
                 self._patient_users_to_question_scores[user_id] = scores
                 self._patient_scores += [(avg_user_score, user_id)]
                 self._patient_repetitions += [(avg_repetitions, user_id)]
-
-        return self._labels_to_scores
+                self._patient_items += [(avg_items, user_id)]
 
     def calculate_avg_score_for_group(self, group='control'):
         if group == 'control':
@@ -66,10 +69,19 @@ class POSSlidingWindow(SlidingWindow):
             patient_repetitions = [rep[0] for rep in self._patient_repetitions]
             return sum(patient_repetitions) / len(patient_repetitions)
 
+    def calculate_items_for_group(self, group='control'):
+        if group == 'control':
+            control_items = [item[0] for item in self._control_items]
+            return sum(control_items) / len(control_items)
+        else:
+            patient_items = [item[0] for item in self._patient_items]
+            return sum(patient_items) / len(patient_items)
+
     def _user_avg_scores(self, user_id):
         skip = []
         scores = {}
         repetitions = {}
+        items = {}
 
         # iterate answers
         for answer_num, users_pos_data in sorted(self._answers_to_user_id_pos_data.items()):
@@ -81,17 +93,19 @@ class POSSlidingWindow(SlidingWindow):
                 skip += [answer_num]
                 continue
 
-            score, rep = self._avg_answer_score_by_pos_tags(user_pos_data['tokens'], user_pos_data['posTags'])
-            scores[answer_num] = score
-            repetitions[answer_num] = rep
+            averages = self._avg_answer_score_by_pos_tags(user_pos_data['tokens'], user_pos_data['posTags'])
+            scores[answer_num] = averages['scores']
+            repetitions[answer_num] = averages['repetitions']
+            items[answer_num] = averages['items']
 
+        # fill in for missing answers
         if skip:
             mean = sum(scores.values()) / len(scores.values())
             for ans in skip:
                 scores[ans] = mean
                 repetitions[ans] = 0
 
-        return scores, repetitions
+        return {'scores': scores, 'repetitions': repetitions, 'items': items}
 
     def _read_answers_pos_tags(self):
         json_pattern = os.path.join(self._data_dir, 'answers_pos_tags', '*.json')
@@ -104,47 +118,49 @@ class POSSlidingWindow(SlidingWindow):
 
     def _avg_answer_score_by_pos_tags(self, answer, pos_tags):
         """
-        Calculate the cosine similarity of an answer using POS tags
+        Calculate:
+        scores - average cosine similarity of an answer using POS tags (average of window averages)
+        repetitions - sum of word repetitions for an answer
+        items - sum of valid words for an answer
         Only considering “content words” - nouns, verbs, adjectives and adverbs
-        :return:
+        :return: dictionary with the required fields
         """
         scores = []
-        repetitions = []
+        repetitions = 0
         valid_words = []
         valid_pos_tags = []
 
-        for pos, (word, pos_tag) in enumerate(zip(answer, pos_tags)):
+        for i, (word, pos_tag) in enumerate(zip(answer, pos_tags)):
             if self._should_skip(word, pos_tag):
                 continue
             valid_words += [word]
             valid_pos_tags += [pos_tag]
 
         if not valid_words:
-            return 0, 0
+            return {'scores': 0, 'repetitions': 0, 'items': 0}
 
-        for pos, (word, pos_tag) in enumerate(zip(valid_words, valid_pos_tags)):
-            if pos + self._window_size >= len(valid_words):
+        for i, (word, pos_tag) in enumerate(zip(valid_words, valid_pos_tags)):
+            if i + self._window_size >= len(valid_words):
                 break
 
             word_vector = get_vector_repr_of_word(self._model, word)
             score = 0
-            rep = 0
 
             # calculate cosine similarity for window
             for dist in range(1, self._window_size + 1):
-                context = valid_words[pos + dist]
+                context = valid_words[i + dist]
                 context_vector = get_vector_repr_of_word(self._model, context)
                 score += cosine_similarity([word_vector], [context_vector])[0][0]
 
                 if word == context:
-                    rep += 1
+                    repetitions += 1
 
+            # average for window
             score /= self._window_size
             scores += [score]
-            repetitions += [rep]
 
         ret_score = sum(scores) / len(scores) if len(scores) > 0 else 0
-        return ret_score, sum(repetitions)
+        return {'scores': ret_score, 'repetitions': repetitions, 'items': len(valid_words)}
 
     def _should_skip(self, word, pos_tag):
         """

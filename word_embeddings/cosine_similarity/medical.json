@@ -5,7 +5,10 @@
   "mode": {
     "type": "pos",
     "extras" : {
-      "pos": "noun, verb, adverb, adjective"
+      "pos": "noun"
     }
+  },
+  "output": {
+    "plot": true
   }
 }

@@ -17,7 +17,6 @@ class SlidingWindow(object):
         self._extras = extras
         self._logger = self._setup_logger()
 
-        self._labels_to_scores = {}
         self._control_scores = []
         self._patient_scores = []
 

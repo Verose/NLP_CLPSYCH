@@ -34,14 +34,11 @@ class BasicSlidingWindow(SlidingWindow):
                 scores += [score]
 
             avg_user_score = sum(scores) / len(scores)
-            self._labels_to_scores[user_id] = (avg_user_score, label)
 
             if label == 'control':
                 self._control_scores += [(avg_user_score, user_id)]
             else:
                 self._patient_scores += [(avg_user_score, user_id)]
-
-        return self._labels_to_scores
 
     def calculate_avg_score_for_group(self, group='control'):
         if group == 'control':
