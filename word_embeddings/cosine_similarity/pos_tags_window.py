@@ -55,12 +55,8 @@ class POSSlidingWindow(SlidingWindow):
                 self._patient_items += [(avg_items, user_id)]
 
     def calculate_avg_score_for_group(self, group='control'):
-        if group == 'control':
-            control_scores = [score[0] for score in self._control_scores]
-            return sum(control_scores) / len(control_scores)
-        else:
-            patient_scores = [score[0] for score in self._patient_scores]
-            return sum(patient_scores) / len(patient_scores)
+        scores = self.get_scores(group)
+        return sum(scores) / len(scores)
 
     def calculate_repetitions_for_group(self, group='control'):
         if group == 'control':
@@ -121,7 +117,11 @@ class POSSlidingWindow(SlidingWindow):
         """
         Calculate:
         scores - average cosine similarity of an answer using POS tags (average of window averages)
+        Cosine Similarity is calculated as an average over the answers.
+        An answer is calculated by the average cosine similarity over all possible windows
         repetitions - sum of word repetitions for an answer
+        Word repetitions are calculated as an average over the answers.
+        An answer is calculated by summation over all possible windows.
         items - sum of valid words for an answer
         Only considering “content words” - nouns, verbs, adjectives and adverbs
         :return: dictionary with the required fields

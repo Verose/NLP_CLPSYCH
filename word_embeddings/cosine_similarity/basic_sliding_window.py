@@ -41,12 +41,8 @@ class BasicSlidingWindow(SlidingWindow):
                 self._patient_scores += [(avg_user_score, user_id)]
 
     def calculate_avg_score_for_group(self, group='control'):
-        if group == 'control':
-            control_scores = [score[0] for score in self._control_scores]
-            return sum(control_scores) / len(control_scores)
-        else:
-            patient_scores = [score[0] for score in self._patient_scores]
-            return sum(patient_scores) / len(patient_scores)
+        scores = self.get_scores(group)
+        return sum(scores) / len(scores)
 
     def _avg_answer_score_by_window(self, answer):
         """
