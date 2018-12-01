@@ -5,7 +5,8 @@
   "mode": {
     "type": "pos",
     "extras" : {
-      "pos": "noun verb adverb adjective"
+      "pos": "noun verb adverb adjective",
+      "window": "surrounding"
     }
   },
   "output": {

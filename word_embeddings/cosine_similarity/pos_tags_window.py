@@ -15,6 +15,7 @@ class POSSlidingWindow(SlidingWindow):
     def __init__(self, model, data, window_size, extras, data_dir):
         self._data_dir = data_dir
         self._pos_tags_to_filter_in = extras['pos']
+        self._window_method = extras['window']
 
         self._answers_to_user_id_pos_data = {}
         self._control_users_to_question_scores = {}
@@ -125,8 +126,6 @@ class POSSlidingWindow(SlidingWindow):
         Only considering “content words” - nouns, verbs, adjectives and adverbs
         :return: dictionary with the required fields
         """
-        scores = []
-        repetitions = 0
         valid_words = []
         valid_pos_tags = []
 
@@ -138,6 +137,18 @@ class POSSlidingWindow(SlidingWindow):
 
         if not valid_words:
             return {'scores': 0, 'repetitions': 0, 'items': 0}
+
+        if self._window_method == 'forward':
+            repetitions, scores = self._avg_answer_scores_forward_window(valid_pos_tags, valid_words)
+        else:
+            repetitions, scores = self._avg_answer_scores_surrounding_window(valid_pos_tags, valid_words)
+
+        ret_score = sum(scores) / len(scores) if len(scores) > 0 else 0
+        return {'scores': ret_score, 'repetitions': repetitions, 'items': len(valid_words)}
+
+    def _avg_answer_scores_forward_window(self, valid_pos_tags, valid_words):
+        scores = []
+        repetitions = 0
 
         for i, (word, pos_tag) in enumerate(zip(valid_words, valid_pos_tags)):
             if i + self._window_size >= len(valid_words):
@@ -158,9 +169,37 @@ class POSSlidingWindow(SlidingWindow):
             # average for window
             score /= self._window_size
             scores += [score]
+        return repetitions, scores
 
-        ret_score = sum(scores) / len(scores) if len(scores) > 0 else 0
-        return {'scores': ret_score, 'repetitions': repetitions, 'items': len(valid_words)}
+    def _avg_answer_scores_surrounding_window(self, valid_pos_tags, valid_words):
+        scores = []
+        repetitions = 0
+
+        for i, (word, pos_tag) in enumerate(zip(valid_words, valid_pos_tags)):
+            if i - self._window_size < 0:
+                continue
+            if i + self._window_size >= len(valid_words):
+                break
+
+            word_vector = get_vector_repr_of_word(self._model, word)
+            score = 0
+
+            # calculate cosine similarity for surrounding window
+            for dist in range(i - self._window_size, i + self._window_size + 1):
+                if dist == i:
+                    continue
+
+                context = valid_words[dist]
+                context_vector = get_vector_repr_of_word(self._model, context)
+                score += cosine_similarity([word_vector], [context_vector])[0][0]
+
+                if word == context:
+                    repetitions += 1
+
+            # average for window
+            score /= (2 * self._window_size)
+            scores += [score]
+        return repetitions, scores
 
     def _should_skip(self, word, pos_tag):
         """
