@@ -18,8 +18,6 @@ class POSSlidingWindow(SlidingWindow):
         self._window_method = extras['window']
 
         self._answers_to_user_id_pos_data = {}
-        self._control_users_to_question_scores = {}
-        self._patient_users_to_question_scores = {}
         self._control_repetitions = []
         self._patient_repetitions = []
         self._control_items = []
@@ -27,9 +25,6 @@ class POSSlidingWindow(SlidingWindow):
 
         self._read_answers_pos_tags()
         super().__init__(model, data, window_size)
-
-    def get_user_to_question_scores(self):
-        return self._control_users_to_question_scores, self._patient_users_to_question_scores
 
     def calculate_all_avg_scores(self):
         # iterate users

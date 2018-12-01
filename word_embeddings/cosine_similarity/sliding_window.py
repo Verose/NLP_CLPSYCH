@@ -21,6 +21,8 @@ class SlidingWindow(object):
 
         self._control_scores = []
         self._patient_scores = []
+        self._control_users_to_question_scores = {}
+        self._patient_users_to_question_scores = {}
 
     def _setup_logger(self):
         logger = logging.getLogger(self.__class__.__name__)
@@ -42,6 +44,12 @@ class SlidingWindow(object):
         else:
             return [score[0] for score in self._patient_scores]
 
+    def get_user_to_question_scores(self, group='control'):
+        if group == 'control':
+            return self._control_users_to_question_scores
+        else:
+            return self._patient_users_to_question_scores
+
     def perform_ttest_on_averages(self):
         """
         Performs t-test on the average cos-sim score of each user
@@ -57,7 +65,9 @@ class SlidingWindow(object):
         Performs t-test on all of the cos-sim scores of each user
         :return:
         """
-        control_scores_by_question, patient_scores_by_question = self.get_user_to_question_scores()
+        control_scores_by_question = self.get_user_to_question_scores('control')
+        patient_scores_by_question = self.get_user_to_question_scores('patients')
+
         control = [cont for cont in control_scores_by_question.values()]
         patients = [pat for pat in patient_scores_by_question.values()]
 

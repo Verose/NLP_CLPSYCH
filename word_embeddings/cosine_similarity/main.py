@@ -35,7 +35,12 @@ def average_cosine_similarity_several_window_sizes():
                     .format(control_score, patients_score))
 
         tstatistic, pvalue = cosine_calcs.calculate_ttest_scores()
-        logger.info('ttest scores: t-statistic: {0:.4f}, p-value: {1:.4f} '.format(tstatistic, pvalue))
+        logger.info('t-test scores on averages: t-statistic: {0:.4f}, p-value: {1:.4f} '.format(tstatistic, pvalue))
+        tstatistic, pvalue = cosine_calcs.calculate_ttest_scores_all()
+        ttest_all = ''
+        for i, (stat, p) in enumerate(zip(tstatistic, pvalue), 1):
+            ttest_all += 'Q{0}: t-statistic: {1:.4f}, p-value: {2:.4f} '.format(i, stat, p)
+        logger.info(ttest_all)
 
         if conf['plot']:
             control_scores_by_question, patient_scores_by_question = cosine_calcs.get_user_to_question_scores()
