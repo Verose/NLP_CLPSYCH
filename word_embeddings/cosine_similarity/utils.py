@@ -81,3 +81,21 @@ def calc_Xy_by_question_and_plot(user_score_by_question, marker, c, label):
         y += [scores]
 
     plt.scatter(X, y, marker=marker, c=c, label=label)
+
+
+def ttest_results_to_csv(tests, output_dir, pos_tags, logger):
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.expand_frame_repr', False)
+    pd.set_option('max_colwidth', -1)
+    dfs = []
+    headers = ['t-statistic', 'p-value']
+    for i in tests:
+        df = pd.DataFrame([(item.tstat, item.pval) for item in i.questions_list], columns=headers)
+        dfs += [df]
+
+    keys = ['window: {}'.format(i) for i in range(1, len(tests) + 1)]
+    dfs = pd.concat(dfs, axis=1, keys=keys)
+    dfs.index += 1
+    dfs.insert(0, 'question', range(1, len(tests[0].questions_list) + 1))
+    logger.debug(dfs)
+    dfs.to_csv(os.path.join(output_dir, "t-test_results_{}.csv".format(pos_tags)), index=False)
