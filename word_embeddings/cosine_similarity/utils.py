@@ -32,13 +32,14 @@ def get_medical_data(data_dir):
     return medical_data
 
 
-def read_conf():
+def read_conf(data_dir):
     cfg = {}
-    json_file = open('medical.json').read()
+    json_file = open(os.path.join(data_dir, 'medical.json')).read()
     json_data = json.loads(json_file, encoding='utf-8')
     cfg['size'] = json_data['window']['size']
     cfg['mode'] = json_data['mode']['type']
     cfg['extras'] = json_data['mode']['extras']
+    cfg['grid_search'] = json_data['output']['grid_search']
     cfg['plot'] = json_data['output']['plot']
     return cfg
 
@@ -50,7 +51,6 @@ def plot_groups_histograms(control_scores_by_question, patient_scores_by_questio
     plt.legend()
     plt.title('Cosine Similarity Scores Histogram Per-Question For Window Size: {}'.format(win_size))
     plt.savefig(os.path.join(output_dir, "cos_sim_per_question_histogram_win{}.png".format(win_size)))
-    # plt.show()
 
 
 def plot_groups_scores_by_question(control_scores_by_question, patient_scores_by_question, win_size, output_dir):
@@ -64,7 +64,6 @@ def plot_groups_scores_by_question(control_scores_by_question, patient_scores_by
     plt.legend()
     plt.title('Cosine Similarity Scores Per-Question For Window Size: {}'.format(win_size))
     plt.savefig(os.path.join(output_dir, "cos_sim_per_question_win{}.png".format(win_size)))
-    # plt.show()
 
 
 def calc_Xy_by_question_and_plot(user_score_by_question, marker, c, label):
@@ -99,3 +98,20 @@ def ttest_results_to_csv(tests, output_dir, pos_tags, logger):
     dfs.insert(0, 'question', range(1, len(tests[0].questions_list) + 1))
     logger.debug(dfs)
     dfs.to_csv(os.path.join(output_dir, "t-test_results_{}.csv".format(pos_tags)), index=False)
+
+
+def plot_grid_search(grid_search, output_dir):
+    plt.clf()
+
+    for pos_tags, diff_scores in grid_search:
+        X = [score[1] for score in diff_scores]
+        y = [score[0] for score in diff_scores]
+        plt.scatter(X, y, label=pos_tags)
+
+    plt.xlabel('cos-sim diff')
+    plt.ylabel('window size')
+    plt.yticks(range(1, 5))
+    plt.legend()
+    plt.title('Grid Search - window size and cos-sim diff of groups')
+
+    plt.savefig(os.path.join(output_dir, "grid_search.png"))

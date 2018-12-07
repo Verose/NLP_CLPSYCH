@@ -1,6 +1,6 @@
 .idea/
-word_embeddings/data/saved_data/
-word_embeddings/data/
+word_embeddings/data/*
+!word_embeddings/data/medical.json
 word_embeddings/logs/
 word_embeddings/outputs/
 venv/

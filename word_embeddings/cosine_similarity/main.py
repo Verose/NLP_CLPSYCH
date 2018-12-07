@@ -9,6 +9,7 @@ warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 from gensim.models.wrappers import FastText
 
 OUTPUT_DIR = os.path.join('..', 'outputs')
+DATA_DIR = os.path.join('..', 'data')
 LOGGER = logging.getLogger('Main')
 LOGGER.setLevel(logging.INFO)
 file_handler = logging.FileHandler(filename=os.path.join(OUTPUT_DIR, 'main_outputs.txt'))
@@ -19,11 +20,12 @@ LOGGER.addHandler(file_handler)
 
 def average_cosine_similarity_several_window_sizes():
     win_tests = []
+    gs_window = []
 
     for win_size in range(1, conf['size'] + 1):
         win_test = WindowTTest(win_size, [])
 
-        cosine_calcs = CosineSimilarity(model, data, conf['mode'], conf['extras'], win_size, data_dir)
+        cosine_calcs = CosineSimilarity(model, data, conf['mode'], conf['extras'], win_size, DATA_DIR)
         cosine_calcs.init_calculations()
 
         if conf['mode'] == 'pos' and win_size == 1:
@@ -38,6 +40,7 @@ def average_cosine_similarity_several_window_sizes():
         LOGGER.info('\nScores for window size {}: '.format(win_size))
         LOGGER.info('Average Cos-Sim per answer: Control: {0:.4f}, Patients: {1:.4f}'
                     .format(control_score, patients_score))
+        gs_window.append((win_size, control_score-patients_score))
 
         tstatistic, pvalue = cosine_calcs.calculate_ttest_scores()
         LOGGER.info('t-test scores on averages: t-statistic: {0:.4f}, p-value: {1:.4f} '.format(tstatistic, pvalue))
@@ -62,12 +65,22 @@ def average_cosine_similarity_several_window_sizes():
 
     LOGGER.debug('t-test results: {}'.format(str(win_tests)))
     ttest_results_to_csv(win_tests, OUTPUT_DIR, conf['extras']['pos'], LOGGER)
+    return gs_window
 
 
 if __name__ == '__main__':
-    data_dir = os.path.join('..', 'data')
-    data = get_medical_data(data_dir)
-    conf = read_conf()
-    model = FastText.load_fasttext_format(os.path.join(data_dir, 'FastText-pretrained-hebrew', 'wiki.he.bin'))
+    data = get_medical_data(DATA_DIR)
+    conf = read_conf(DATA_DIR)
+    model = FastText.load_fasttext_format(os.path.join(DATA_DIR, 'FastText-pretrained-hebrew', 'wiki.he.bin'))
 
-    average_cosine_similarity_several_window_sizes()
+    if conf['grid_search'] and conf['mode'] == 'pos':
+        grid_search = []
+
+        for pos_tags in ['noun', 'verb', 'adjective', 'adverb', 'noun verb adverb adjective', 'verb adverb']:
+            conf['extras']['pos'] = pos_tags
+            grid_search_window = average_cosine_similarity_several_window_sizes()
+            grid_search.append((pos_tags, grid_search_window))
+
+        plot_grid_search(grid_search, OUTPUT_DIR)
+    else:
+        average_cosine_similarity_several_window_sizes()
