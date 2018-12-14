@@ -23,7 +23,6 @@ def get_vector_repr_of_word(model, word):
 
 def get_medical_data(data_dir):
     medical_data = pd.read_csv(os.path.join(data_dir, 'all_data.csv'))
-    medical_data = medical_data.iloc[1:]  # remove first row
 
     # remove punctuation
     for column in medical_data:
@@ -98,6 +97,22 @@ def ttest_results_to_csv(tests, output_dir, pos_tags, logger):
     dfs.insert(0, 'question', range(1, len(tests[0].questions_list) + 1))
     logger.debug(dfs)
     dfs.to_csv(os.path.join(output_dir, "t-test_results_{}.csv".format(pos_tags)), index=False)
+
+
+def cossim_scores_to_csv(tests, output_dir, pos_tags, logger):
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.expand_frame_repr', False)
+    pd.set_option('max_colwidth', -1)
+    dfs = []
+    headers = ['user', 'question', 'cos-sim score']
+    for i in tests:
+        df = pd.DataFrame([(item.userid, item.question_num, item.score) for item in i.questions_list], columns=headers)
+        dfs += [df]
+
+    keys = ['window: {}'.format(i) for i in range(1, len(tests) + 1)]
+    dfs = pd.concat(dfs, axis=1, keys=keys)
+    logger.debug(dfs)
+    dfs.to_csv(os.path.join(output_dir, "cossim_results_{}.csv".format(pos_tags)), index=False)
 
 
 def plot_grid_search(grid_search, output_dir):

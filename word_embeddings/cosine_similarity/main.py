@@ -1,6 +1,7 @@
 import logging
 import warnings
 
+from word_embeddings.cosine_similarity.cos_sim_records import WindowCosSim, CosSim
 from word_embeddings.cosine_similarity.cosine_similarity import CosineSimilarity
 from word_embeddings.cosine_similarity.ttest_records import WindowTTest, TTest
 from word_embeddings.cosine_similarity.utils import *
@@ -20,10 +21,12 @@ LOGGER.addHandler(file_handler)
 
 def average_cosine_similarity_several_window_sizes():
     win_tests = []
+    win_cossim = []
     gs_window = []
 
     for win_size in range(1, conf['size'] + 1):
         win_test = WindowTTest(win_size, [])
+        cossim_test = WindowCosSim(win_size, [])
 
         cosine_calcs = CosineSimilarity(model, data, conf['mode'], conf['extras'], win_size, DATA_DIR)
         cosine_calcs.init_calculations()
@@ -52,6 +55,13 @@ def average_cosine_similarity_several_window_sizes():
 
         if conf['plot']:
             control_scores_by_question, patient_scores_by_question = cosine_calcs.get_user_to_question_scores()
+            for userid, scores in control_scores_by_question.items():
+                for qnum, score in scores.items():
+                    cossim_test.questions_list.append(CosSim(userid, qnum, score))
+            for userid, scores in patient_scores_by_question.items():
+                for qnum, score in scores.items():
+                    cossim_test.questions_list.append(CosSim(userid, qnum, score))
+            win_cossim.append(cossim_test)
             plot_groups_scores_by_question(control_scores_by_question, patient_scores_by_question, win_size,
                                            OUTPUT_DIR)
             control_scores, patient_scores = cosine_calcs.get_scores_for_groups()
@@ -65,6 +75,7 @@ def average_cosine_similarity_several_window_sizes():
 
     LOGGER.debug('t-test results: {}'.format(str(win_tests)))
     ttest_results_to_csv(win_tests, OUTPUT_DIR, conf['extras']['pos'], LOGGER)
+    cossim_scores_to_csv(win_cossim, OUTPUT_DIR, conf['extras']['pos'], LOGGER)
     return gs_window
 
 

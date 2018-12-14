@@ -10,7 +10,7 @@
     }
   },
   "output": {
-    "plot": false,
-    "grid_search": true
+    "plot": true,
+    "grid_search": false
   }
 }
