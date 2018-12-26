@@ -115,6 +115,35 @@ def cossim_scores_to_csv(tests, output_dir, pos_tags, logger):
     dfs.to_csv(os.path.join(output_dir, "cossim_results_{}.csv".format(pos_tags)), index=False)
 
 
+def classifier_features_to_pd(cls_fts, logger, output_dir):
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.expand_frame_repr', False)
+    pd.set_option('max_colwidth', -1)
+
+    headers = ['user',
+               'q_num',
+               'nouns',
+               'verbs',
+               'adjectives',
+               'adverbs',
+               'cossim_score',
+               'sentiment'
+               ]
+    df = pd.DataFrame([(
+        item.user,
+        item.q_num,
+        item.nouns,
+        item.verbs,
+        item.adjectives,
+        item.adverbs,
+        item.cossim_score,
+        item.sentiment
+    ) for item in cls_fts], columns=headers)
+
+    logger.debug(df)
+    df.to_csv(os.path.join(output_dir, "features.csv"), index=False)
+
+
 def plot_grid_search(grid_search, output_dir):
     plt.clf()
 
