@@ -13,7 +13,8 @@ class CosSim:
 
 
 class WindowCosSim:
-    def __init__(self, win_size, questions_list):
+    def __init__(self, header, win_size, questions_list):
+        self.header = header
         self.questions_list = questions_list
         self.window_size = win_size
 
@@ -21,7 +22,7 @@ class WindowCosSim:
         return self.__str__()
 
     def __str__(self):
-        res = "\nwindow {}".format(self.window_size)
+        res = "\nheader {}, window {}".format(self.header, self.window_size)
         for q in self.questions_list:
             res += '\n{}'.format(str(q))
         return res

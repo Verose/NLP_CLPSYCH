@@ -32,27 +32,29 @@ def get_medical_data(data_dir):
 
 
 def read_conf(data_dir):
-    cfg = {}
     json_file = open(os.path.join(data_dir, 'medical.json')).read()
     json_data = json.loads(json_file, encoding='utf-8')
-    cfg['size'] = json_data['window']['size']
-    cfg['mode'] = json_data['mode']['type']
-    cfg['extras'] = json_data['mode']['extras']
-    cfg['grid_search'] = json_data['output']['grid_search']
-    cfg['plot'] = json_data['output']['plot']
-    return cfg
+    return json_data
 
 
-def plot_groups_histograms(control_scores_by_question, patient_scores_by_question, win_size, output_dir):
+def plot_groups_histograms(control_scores_by_question,
+                           patient_scores_by_question,
+                           win_size,
+                           header,
+                           output_dir):
     plt.clf()
     plt.hist(control_scores_by_question, label='control')
     plt.hist(patient_scores_by_question, label='patients')
     plt.legend()
-    plt.title('Cosine Similarity Scores Histogram Per-Question For Window Size: {}'.format(win_size))
-    plt.savefig(os.path.join(output_dir, "cos_sim_per_question_histogram_win{}.png".format(win_size)))
+    plt.title('Cos-Sim Histogram Per-Question For Win: {} with {}'.format(win_size, header))
+    plt.savefig(os.path.join(output_dir, "cos_sim_per_question_histogram_win{}_{}.png".format(win_size, header)))
 
 
-def plot_groups_scores_by_question(control_scores_by_question, patient_scores_by_question, win_size, output_dir):
+def plot_groups_scores_by_question(control_scores_by_question,
+                                   patient_scores_by_question,
+                                   win_size,
+                                   header,
+                                   output_dir):
     plt.clf()
     calc_Xy_by_question_and_plot(control_scores_by_question, marker='*', c='red', label='control')
     calc_Xy_by_question_and_plot(patient_scores_by_question, marker='.', c='blue', label='patients')
@@ -61,8 +63,8 @@ def plot_groups_scores_by_question(control_scores_by_question, patient_scores_by
     plt.ylabel('cos sim scores')
     plt.xticks(range(1, 19))
     plt.legend()
-    plt.title('Cosine Similarity Scores Per-Question For Window Size: {}'.format(win_size))
-    plt.savefig(os.path.join(output_dir, "cos_sim_per_question_win{}.png".format(win_size)))
+    plt.title('Cos-Sim Per-Question For Win: {} with {}'.format(win_size, header))
+    plt.savefig(os.path.join(output_dir, "cos_sim_per_question_win{}_{}.png".format(win_size, header)))
 
 
 def calc_Xy_by_question_and_plot(user_score_by_question, marker, c, label):
@@ -81,7 +83,7 @@ def calc_Xy_by_question_and_plot(user_score_by_question, marker, c, label):
     plt.scatter(X, y, marker=marker, c=c, label=label)
 
 
-def ttest_results_to_csv(tests, output_dir, pos_tags, logger):
+def ttest_results_to_csv(tests, output_dir, logger):
     pd.set_option('display.max_columns', None)
     pd.set_option('display.expand_frame_repr', False)
     pd.set_option('max_colwidth', -1)
@@ -91,15 +93,15 @@ def ttest_results_to_csv(tests, output_dir, pos_tags, logger):
         df = pd.DataFrame([(item.tstat, item.pval) for item in i.questions_list], columns=headers)
         dfs += [df]
 
-    keys = ['window: {}'.format(i) for i in range(1, len(tests) + 1)]
+    keys = ['header: {}, window: {}'.format(test.header, test.window_size) for test in tests]
     dfs = pd.concat(dfs, axis=1, keys=keys)
     dfs.index += 1
     dfs.insert(0, 'question', range(1, len(tests[0].questions_list) + 1))
     logger.debug(dfs)
-    dfs.to_csv(os.path.join(output_dir, "t-test_results_{}.csv".format(pos_tags)), index=False)
+    dfs.to_csv(os.path.join(output_dir, "t-test_results.csv"), index=False)
 
 
-def cossim_scores_to_csv(tests, output_dir, pos_tags, logger):
+def cossim_scores_to_csv(tests, output_dir, logger):
     pd.set_option('display.max_columns', None)
     pd.set_option('display.expand_frame_repr', False)
     pd.set_option('max_colwidth', -1)
@@ -109,39 +111,10 @@ def cossim_scores_to_csv(tests, output_dir, pos_tags, logger):
         df = pd.DataFrame([(item.userid, item.question_num, item.score) for item in i.questions_list], columns=headers)
         dfs += [df]
 
-    keys = ['window: {}'.format(i) for i in range(1, len(tests) + 1)]
+    keys = ['header: {}, window: {}'.format(test.header, test.window_size) for test in tests]
     dfs = pd.concat(dfs, axis=1, keys=keys)
     logger.debug(dfs)
-    dfs.to_csv(os.path.join(output_dir, "cossim_results_{}.csv".format(pos_tags)), index=False)
-
-
-def classifier_features_to_pd(cls_fts, logger, output_dir):
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.expand_frame_repr', False)
-    pd.set_option('max_colwidth', -1)
-
-    headers = ['user',
-               'q_num',
-               'nouns',
-               'verbs',
-               'adjectives',
-               'adverbs',
-               'cossim_score',
-               'sentiment'
-               ]
-    df = pd.DataFrame([(
-        item.user,
-        item.q_num,
-        item.nouns,
-        item.verbs,
-        item.adjectives,
-        item.adverbs,
-        item.cossim_score,
-        item.sentiment
-    ) for item in cls_fts], columns=headers)
-
-    logger.debug(df)
-    df.to_csv(os.path.join(output_dir, "features.csv"), index=False)
+    dfs.to_csv(os.path.join(output_dir, "cossim_results.csv"), index=False)
 
 
 def plot_grid_search(grid_search, output_dir):

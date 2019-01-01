@@ -12,10 +12,10 @@ from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word
 
 
 class POSSlidingWindow(SlidingWindow):
-    def __init__(self, model, data, window_size, extras, data_dir):
+    def __init__(self, model, data, window_size, data_dir, pos_tags, window_method):
         self._data_dir = data_dir
-        self._pos_tags_to_filter_in = extras['pos']
-        self._window_method = extras['window']
+        self._pos_tags_to_filter_in = pos_tags
+        self._window_method = window_method
 
         self._answers_to_user_id_pos_data = {}
         self._control_repetitions = []

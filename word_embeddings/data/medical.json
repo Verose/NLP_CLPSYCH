@@ -1,16 +1,15 @@
 {
-  "window": {
-    "size": 4
-  },
-  "mode": {
-    "type": "pos",
-    "extras" : {
-      "pos": "noun verb adverb adjective",
-      "window": "surrounding"
-    }
-  },
+  "window_size": [
+    4, 3, 1
+  ],
+  "mode": "pos",
+  "pos_tags": [
+    "noun verb adverb adjective", "verb", "adjective"
+  ],
+  "window_method": "surrounding",
   "output": {
     "plot": true,
-    "grid_search": false
+    "grid_search": false,
+    "grid_search_count": 2
   }
 }

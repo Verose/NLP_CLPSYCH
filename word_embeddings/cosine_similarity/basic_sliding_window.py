@@ -9,8 +9,8 @@ from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word
 
 
 class BasicSlidingWindow(SlidingWindow):
-    def __init__(self, model, data, window_size, extras):
-        super().__init__(model, data, window_size, extras)
+    def __init__(self, model, data, window_size):
+        super().__init__(model, data, window_size)
 
     def calculate_all_avg_scores(self):
         # iterate users
