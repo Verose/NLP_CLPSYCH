@@ -28,6 +28,9 @@ positivity_features = [
 ]
 
 
+DEBUG = False
+
+
 def classify(model, params):
     gcv = GridSearchCV(model, params, cv=10, scoring="accuracy")
     gcv.fit(X_train, y_train)
@@ -42,12 +45,13 @@ def classify(model, params):
     train_pre, train_recall, train_fscore, _ = precision_recall_fscore_support(y_train, y_hat_train, average='binary')
     test_pre, test_recall, test_fscore, _ = precision_recall_fscore_support(y_test, y_hat_test, average='binary')
 
-    # print("Printing results for {} with params: {}".format(classifier_name, ', '.join(test)))
-    # print("With best params:", gcv.best_params_)
-    # print("Train accuracy", train_acc)
-    # print("Test accuracy", test_acc)
-    # print("Train precision: {}, recall: {}, f-scores: {}".format(train_pre, train_recall, train_fscore))
-    # print("Test precision: {}, recall: {}, f-scores: {}".format(test_pre, test_recall, test_fscore))
+    if DEBUG:
+        print("Printing results for {} with params: {}".format(classifier_name, ', '.join(test)))
+        print("With best params:", gcv.best_params_)
+        print("Train accuracy", train_acc)
+        print("Test accuracy", test_acc)
+        print("Train precision: {}, recall: {}, f-scores: {}".format(train_pre, train_recall, train_fscore))
+        print("Test precision: {}, recall: {}, f-scores: {}".format(test_pre, test_recall, test_fscore))
 
     return classifier_name, \
            train_acc, train_pre, train_recall, train_fscore, \
@@ -97,15 +101,19 @@ if __name__ == '__main__':
     pd.set_option('display.expand_frame_repr', False)
     pd.set_option('max_colwidth', -1)
     dfs_res = []
-    headers = ['train_accuracy', 'train_precision', 'train_recall', 'train_fscore',
-               'test_accuracy', 'test_precision', 'test_recall', 'test_fscore']
+    headers = ['Features (#features)',
+               'Train Acc', 'Test Acc',
+               'Train Precision', 'Test Precision',
+               'Train Recall', 'Test Recall',
+               'Train F-Score', 'Test F-Score']
     for i in results:
-        df_res = pd.DataFrame([(item.train_accuracy, item.train_precision, item.train_recall, item.train_fscore,
-                                item.test_accuracy, item.test_precision, item.test_recall, item.test_fscore)
+        df_res = pd.DataFrame([('{} ({}) {}'.format(i.tested_features, i.num_features, item.classifier_name),
+                                item.train_accuracy, item.test_accuracy,
+                                item.train_precision, item.test_precision,
+                                item.train_recall, item.test_recall,
+                                item.train_fscore, item.test_fscore)
                                for item in i.results_list], columns=headers)
         dfs_res += [df_res]
 
-    keys = ['{}, #{}'.format(test.tested_features, test.num_features) for test in results]
-    dfs_res = pd.concat(dfs_res, axis=1, keys=keys)
+    dfs_res = pd.concat(dfs_res, axis=0)
     dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier.csv"), index=False)
-
