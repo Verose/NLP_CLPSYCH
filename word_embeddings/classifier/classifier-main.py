@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.svm import LinearSVC
 from xgboost import XGBClassifier
 
 from word_embeddings.classifier.results_records import ResultsRecord, ClassifierResults
@@ -32,7 +33,7 @@ DEBUG = False
 
 
 def classify(model, params):
-    gcv = GridSearchCV(model, params, cv=10, scoring="accuracy")
+    gcv = GridSearchCV(model, params, cv=10, scoring="accuracy", iid=False)
     gcv.fit(X_train, y_train)
     best_model = gcv.best_estimator_
 
@@ -46,7 +47,7 @@ def classify(model, params):
     test_pre, test_recall, test_fscore, _ = precision_recall_fscore_support(y_test, y_hat_test, average='binary')
 
     if DEBUG:
-        print("Printing results for {} with params: {}".format(classifier_name, ', '.join(test)))
+        print("Printing results for {} on {}".format(classifier_name, test_name))
         print("With best params:", gcv.best_params_)
         print("Train accuracy", train_acc)
         print("Test accuracy", test_acc)
@@ -73,10 +74,10 @@ if __name__ == '__main__':
     data = get_features(df_res, all_features)
     y = df_res['label'].replace({'control': 0, 'patient': 1})
 
-    tests = [(pos_tags_features, 'pos_tags'), (cos_sim_features, 'cos_sim'), (positivity_features, 'positivity'),
-             (cos_sim_features + positivity_features, 'cos_sim + positivity'), (all_features, 'all')]
-
+    tests = [(pos_tags_features, 'PosTags'), (cos_sim_features, 'CosSim'), (positivity_features, 'Positivity'),
+             (cos_sim_features + positivity_features, 'CosSim + Positivity'), (all_features, 'All Features')]
     results = []
+
     for test, test_name in tests:
         # classify pos tags features
         X = get_features(data, test)
@@ -84,16 +85,23 @@ if __name__ == '__main__':
 
         test_results = ClassifierResults(test_name, len(X.columns), [])
         xgboost_params = classify(XGBClassifier(),
-                                  params={"n_estimators": [100],
-                                          "max_depth": [2, 5],
-                                          "learning_rate": [0.05]})
+                                  params={"n_estimators": [20, 50, 100],
+                                          "max_depth": [2, 3, 5],
+                                          "learning_rate": [0.01, 0.03, 0.05]})
         test_results.results_list.append(ResultsRecord(*xgboost_params))
 
         gb_params = classify(GradientBoostingClassifier(),
-                             params={"n_estimators": [100],
-                                     "max_depth": [2, 5],
-                                     "learning_rate": [0.05]})
+                             params={"n_estimators": [20, 50, 100],
+                                     "max_depth": [2, 3, 5],
+                                     "learning_rate": [0.01, 0.03, 0.05]})
         test_results.results_list.append(ResultsRecord(*gb_params))
+
+        svm = classify(LinearSVC(),
+                       params={"loss": ['hinge', 'squared_hinge'],
+                               "C": [0.5, 1.0, 10],
+                               "max_iter": [10000]})
+        test_results.results_list.append(ResultsRecord(*svm))
+
         results += [test_results]
 
     # print pretty csv
