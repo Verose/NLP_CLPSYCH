@@ -1,19 +1,25 @@
+import logging
 import os
 import warnings
 
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.svm import LinearSVC
 from xgboost import XGBClassifier
 
-from word_embeddings.classifier.results_records import ResultsRecord, ClassifierResults
-
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 
 OUTPUT_DIR = os.path.join('..', 'outputs')
 DATA_DIR = os.path.join('..', 'data')
+
+LOGGER = logging.getLogger('Main')
+LOGGER.setLevel(logging.INFO)
+file_handler = logging.FileHandler(filename=os.path.join(OUTPUT_DIR, 'classifier_outputs.txt'))
+formatter = logging.Formatter("%(message)s")
+file_handler.setFormatter(formatter)
+LOGGER.addHandler(file_handler)
 
 
 pos_tags_features = ['noun',
@@ -29,11 +35,34 @@ positivity_features = [
 ]
 
 
-DEBUG = False
+DEBUG = True
+
+
+class ResultsRecord:
+    def __init__(self, classifier_name,
+                 train_accuracy, train_precision, train_recall, train_fscore,
+                 test_accuracy, test_precision, test_recall, test_fscore,
+                 ):
+        self.classifier_name = classifier_name
+        self.train_accuracy = train_accuracy
+        self.train_precision = train_precision
+        self.train_recall = train_recall
+        self.train_fscore = train_fscore
+        self.test_accuracy = test_accuracy
+        self.test_precision = test_precision
+        self.test_recall = test_recall
+        self.test_fscore = test_fscore
+
+
+class ClassifierResults:
+    def __init__(self, tested_features, num_features, results_list):
+        self.tested_features = tested_features
+        self.num_features = num_features
+        self.results_list = results_list
 
 
 def classify(model, params):
-    gcv = GridSearchCV(model, params, cv=10, scoring="accuracy", iid=False)
+    gcv = GridSearchCV(model, params, cv=5, scoring="accuracy", iid=False)
     gcv.fit(X_train, y_train)
     best_model = gcv.best_estimator_
 
@@ -43,20 +72,27 @@ def classify(model, params):
 
     train_acc = accuracy_score(y_train, y_hat_train)
     test_acc = accuracy_score(y_test, y_hat_test)
-    train_pre, train_recall, train_fscore, _ = precision_recall_fscore_support(y_train, y_hat_train, average='binary')
-    test_pre, test_recall, test_fscore, _ = precision_recall_fscore_support(y_test, y_hat_test, average='binary')
+    train_pre, train_recall, train_fscore, _ = precision_recall_fscore_support(
+        y_train,
+        y_hat_train,
+        average='binary'
+    )
+    test_pre, test_recall, test_fscore, _ = precision_recall_fscore_support(
+        y_test,
+        y_hat_test,
+        average='binary'
+    )
 
     if DEBUG:
-        print("Printing results for {} on {}".format(classifier_name, test_name))
-        print("With best params:", gcv.best_params_)
-        print("Train accuracy", train_acc)
-        print("Test accuracy", test_acc)
-        print("Train precision: {}, recall: {}, f-scores: {}".format(train_pre, train_recall, train_fscore))
-        print("Test precision: {}, recall: {}, f-scores: {}".format(test_pre, test_recall, test_fscore))
+        LOGGER.info("************* {}: {} *************".format(classifier_name, test_name))
+        LOGGER.info("With best params:", gcv.best_params_)
+        LOGGER.info("Train accuracy {}, Test accuracy {}".format(train_acc, test_acc))
+        LOGGER.info("Train precision: {}, recall: {}, f-scores: {}".format(train_pre, train_recall, train_fscore))
+        LOGGER.info("Test precision: {}, recall: {}, f-scores: {}".format(test_pre, test_recall, test_fscore))
 
     return classifier_name, \
-           train_acc, train_pre, train_recall, train_fscore, \
-           test_acc, test_pre, test_recall, test_fscore
+        train_acc, train_pre, train_recall, train_fscore, \
+        test_acc, test_pre, test_recall, test_fscore
 
 
 def get_features(df_input, column):
@@ -85,16 +121,22 @@ if __name__ == '__main__':
 
         test_results = ClassifierResults(test_name, len(X.columns), [])
         xgboost_params = classify(XGBClassifier(),
-                                  params={"n_estimators": [20, 50, 100],
-                                          "max_depth": [2, 3, 5],
+                                  params={"n_estimators": [20, 50, 100, 200, 300, 400],
+                                          "max_depth": [1, 2, 3, 5, 8, 10],
                                           "learning_rate": [0.01, 0.03, 0.05]})
         test_results.results_list.append(ResultsRecord(*xgboost_params))
 
         gb_params = classify(GradientBoostingClassifier(),
-                             params={"n_estimators": [20, 50, 100],
-                                     "max_depth": [2, 3, 5],
+                             params={"n_estimators": [20, 50, 100, 200, 300, 400],
+                                     "max_depth": [1, 2, 3, 5, 8, 10],
                                      "learning_rate": [0.01, 0.03, 0.05]})
         test_results.results_list.append(ResultsRecord(*gb_params))
+
+        rf_params = classify(RandomForestClassifier(),
+                             params={"n_estimators": [20, 50, 100, 200, 300, 400],
+                                     "max_depth": [1, 2, 3, 5],
+                                     "max_features": [1, 5, None, "sqrt", ]})
+        test_results.results_list.append(ResultsRecord(*rf_params))
 
         svm = classify(LinearSVC(),
                        params={"loss": ['hinge', 'squared_hinge'],
