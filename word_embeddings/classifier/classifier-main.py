@@ -2,10 +2,11 @@ import logging
 import os
 import warnings
 
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics.scorer import recall_scorer, precision_scorer, accuracy_scorer
+from sklearn.model_selection import GridSearchCV
 from sklearn.svm import LinearSVC
 from xgboost import XGBClassifier
 
@@ -39,19 +40,11 @@ DEBUG = True
 
 
 class ResultsRecord:
-    def __init__(self, classifier_name,
-                 train_accuracy, train_precision, train_recall, train_fscore,
-                 test_accuracy, test_precision, test_recall, test_fscore,
-                 ):
+    def __init__(self, classifier_name, accuracy, precision, recall):
         self.classifier_name = classifier_name
-        self.train_accuracy = train_accuracy
-        self.train_precision = train_precision
-        self.train_recall = train_recall
-        self.train_fscore = train_fscore
-        self.test_accuracy = test_accuracy
-        self.test_precision = test_precision
-        self.test_recall = test_recall
-        self.test_fscore = test_fscore
+        self.accuracy = accuracy
+        self.precision = precision
+        self.recall = recall
 
 
 class ClassifierResults:
@@ -62,37 +55,25 @@ class ClassifierResults:
 
 
 def classify(model, params):
-    gcv = GridSearchCV(model, params, cv=5, scoring="accuracy", iid=False)
-    gcv.fit(X_train, y_train)
+    scoring = {
+        'accuracy': accuracy_scorer,
+        'precision': precision_scorer,
+        'recall': recall_scorer,
+    }
+    gcv = GridSearchCV(model, params, cv=5, scoring=scoring, refit='accuracy', iid=False)
+    gcv.fit(X, y)
     best_model = gcv.best_estimator_
-
-    y_hat_train = best_model.predict(X_train)
-    y_hat_test = best_model.predict(X_test)
     classifier_name = best_model.__class__.__name__
-
-    train_acc = accuracy_score(y_train, y_hat_train)
-    test_acc = accuracy_score(y_test, y_hat_test)
-    train_pre, train_recall, train_fscore, _ = precision_recall_fscore_support(
-        y_train,
-        y_hat_train,
-        average='binary'
-    )
-    test_pre, test_recall, test_fscore, _ = precision_recall_fscore_support(
-        y_test,
-        y_hat_test,
-        average='binary'
-    )
+    accuracy = np.mean(gcv.cv_results_['mean_test_accuracy'])
+    precision = np.mean(gcv.cv_results_['mean_test_precision'])
+    recall = np.mean(gcv.cv_results_['mean_test_recall'])
 
     if DEBUG:
         LOGGER.info("************* {}: {} *************".format(classifier_name, test_name))
-        LOGGER.info("With best params:", gcv.best_params_)
-        LOGGER.info("Train accuracy {}, Test accuracy {}".format(train_acc, test_acc))
-        LOGGER.info("Train precision: {}, recall: {}, f-scores: {}".format(train_pre, train_recall, train_fscore))
-        LOGGER.info("Test precision: {}, recall: {}, f-scores: {}".format(test_pre, test_recall, test_fscore))
+        LOGGER.info("With best params: {}".format(gcv.best_params_))
+        LOGGER.info("accuracy: {}, precision: {}, recall: {}".format(accuracy, precision, recall))
 
-    return classifier_name, \
-        train_acc, train_pre, train_recall, train_fscore, \
-        test_acc, test_pre, test_recall, test_fscore
+    return classifier_name, accuracy, precision, recall
 
 
 def get_features(df_input, column):
@@ -115,9 +96,7 @@ if __name__ == '__main__':
     results = []
 
     for test, test_name in tests:
-        # classify pos tags features
         X = get_features(data, test)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
 
         test_results = ClassifierResults(test_name, len(X.columns), [])
         xgboost_params = classify(XGBClassifier(),
@@ -151,17 +130,10 @@ if __name__ == '__main__':
     pd.set_option('display.expand_frame_repr', False)
     pd.set_option('max_colwidth', -1)
     dfs_res = []
-    headers = ['Features (#features)',
-               'Train Acc', 'Test Acc',
-               'Train Precision', 'Test Precision',
-               'Train Recall', 'Test Recall',
-               'Train F-Score', 'Test F-Score']
+    headers = ['Features (#features)', 'Accuracy', 'Precision', 'Recall']
     for i in results:
         df_res = pd.DataFrame([('{} ({}) {}'.format(i.tested_features, i.num_features, item.classifier_name),
-                                item.train_accuracy, item.test_accuracy,
-                                item.train_precision, item.test_precision,
-                                item.train_recall, item.test_recall,
-                                item.train_fscore, item.test_fscore)
+                                item.accuracy, item.precision, item.recall)
                                for item in i.results_list], columns=headers)
         dfs_res += [df_res]
 
