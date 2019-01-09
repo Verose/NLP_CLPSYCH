@@ -5,7 +5,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.metrics.scorer import recall_scorer, precision_scorer, accuracy_scorer
+from sklearn.metrics.scorer import recall_scorer, precision_scorer, accuracy_scorer, f1_scorer
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import LinearSVC
 from xgboost import XGBClassifier
@@ -40,11 +40,12 @@ DEBUG = True
 
 
 class ResultsRecord:
-    def __init__(self, classifier_name, accuracy, precision, recall):
+    def __init__(self, classifier_name, accuracy, precision, recall, f1):
         self.classifier_name = classifier_name
         self.accuracy = accuracy
         self.precision = precision
         self.recall = recall
+        self.f1 = f1
 
 
 class ClassifierResults:
@@ -59,6 +60,7 @@ def classify(model, params):
         'accuracy': accuracy_scorer,
         'precision': precision_scorer,
         'recall': recall_scorer,
+        'f1': f1_scorer,
     }
     gcv = GridSearchCV(model, params, cv=5, scoring=scoring, refit='accuracy', iid=False)
     gcv.fit(X, y)
@@ -67,13 +69,14 @@ def classify(model, params):
     accuracy = np.mean(gcv.cv_results_['mean_test_accuracy'])
     precision = np.mean(gcv.cv_results_['mean_test_precision'])
     recall = np.mean(gcv.cv_results_['mean_test_recall'])
+    f1 = np.mean(gcv.cv_results_['mean_test_f1'])
 
     if DEBUG:
         LOGGER.info("************* {}: {} *************".format(classifier_name, test_name))
         LOGGER.info("With best params: {}".format(gcv.best_params_))
         LOGGER.info("accuracy: {}, precision: {}, recall: {}".format(accuracy, precision, recall))
 
-    return classifier_name, accuracy, precision, recall
+    return classifier_name, accuracy, precision, recall, f1
 
 
 def get_features(df_input, column):
@@ -130,10 +133,11 @@ if __name__ == '__main__':
     pd.set_option('display.expand_frame_repr', False)
     pd.set_option('max_colwidth', -1)
     dfs_res = []
-    headers = ['Features (#features)', 'Accuracy', 'Precision', 'Recall']
+    headers = ['Features (#features)', 'Acc.', 'Prec.', 'Rec.', 'F']
+
     for i in results:
         df_res = pd.DataFrame([('{} ({}) {}'.format(i.tested_features, i.num_features, item.classifier_name),
-                                item.accuracy, item.precision, item.recall)
+                                item.accuracy, item.precision, item.recall, item.f1)
                                for item in i.results_list], columns=headers)
         dfs_res += [df_res]
 
