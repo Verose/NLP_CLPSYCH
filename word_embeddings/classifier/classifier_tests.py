@@ -1,4 +1,6 @@
+import operator
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -6,17 +8,12 @@ from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics.scorer import accuracy_scorer, precision_scorer, recall_scorer, f1_scorer
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import LinearSVC
+from tqdm import tqdm
 from xgboost import XGBClassifier
 
-from features import get_features
-from results_records import ClassifierResults, ResultsRecord
+from features import get_features, boosting_params, rf_params, svm_params
+from results_records import TestResults, ResultsRecord, AnswersResults
 from utils import LOGGER, OUTPUT_DIR
-
-boosting_params = {"n_estimators": [20, 50, 100, 200, 300, 400], "max_depth": [1, 2, 3, 5, 8, 10],
-                   "learning_rate": [0.01, 0.03, 0.05]}
-rf_params = {"n_estimators": [20, 50, 100, 200, 300, 400], "max_depth": [1, 2, 3, 5],
-             "max_features": [1, 5, None, "sqrt", ]}
-svm_params = {"loss": ['hinge', 'squared_hinge'], "C": [0.5, 1.0, 10], "max_iter": [10000]}
 
 
 def classify(X, y, model, params, test_name, debug):
@@ -45,45 +42,56 @@ def classify(X, y, model, params, test_name, debug):
                                   for i, importance in enumerate(best_model.feature_importances_)
                                   if importance > 0]
             LOGGER.info('Important features: ')
+            important_features.sort(key=operator.itemgetter(1), reverse=True)  # sort by importance
             [LOGGER.info('Feature {}: {}'.format(*feat)) for feat in important_features]
 
     return classifier_name, accuracy, precision, recall, f1
 
 
+def get_classifier_result_records(X, y, test_name, debug):
+    result_records = []
+
+    # XGBoost classification
+    xgboost_results = classify(X, y, XGBClassifier(),
+                               params=boosting_params,
+                               test_name=test_name,
+                               debug=debug)
+    result_records.append(ResultsRecord(*xgboost_results))
+
+    # GradientBoosting classification
+    gb_results = classify(X, y, GradientBoostingClassifier(),
+                          params=boosting_params,
+                          test_name=test_name,
+                          debug=debug)
+    result_records.append(ResultsRecord(*gb_results))
+
+    # RandomForest classification
+    rf_results = classify(X, y, RandomForestClassifier(),
+                          params=rf_params,
+                          test_name=test_name,
+                          debug=debug)
+    result_records.append(ResultsRecord(*rf_results))
+
+    # SVM classification
+    svm_results = classify(X, y, LinearSVC(),
+                           params=svm_params,
+                           test_name=test_name,
+                           debug=debug)
+    result_records.append(ResultsRecord(*svm_results))
+
+    return result_records
+
+
 def classify_base(data, y, tests, debug):
     results = []
 
-    for test, test_name in tests:
+    for test, test_name in tqdm(tests, file=sys.stdout, total=len(tests)):
         X = get_features(data, test)
-        test_results = ClassifierResults(test_name, len(X.columns), [])
+        test_results = TestResults(test_name, len(X.columns), [])
+        result_records = get_classifier_result_records(X, y, test_name, debug)
 
-        # XGBoost classification
-        xgboost_results = classify(X, y, XGBClassifier(),
-                                   params=boosting_params,
-                                   test_name=test_name,
-                                   debug=debug)
-        test_results.results_list.append(ResultsRecord(*xgboost_results))
-
-        # GradientBoosting classification
-        gb_results = classify(X, y, GradientBoostingClassifier(),
-                              params=boosting_params,
-                              test_name=test_name,
-                              debug=debug)
-        test_results.results_list.append(ResultsRecord(*gb_results))
-
-        # RandomForest classification
-        rf_results = classify(X, y, RandomForestClassifier(),
-                              params=rf_params,
-                              test_name=test_name,
-                              debug=debug)
-        test_results.results_list.append(ResultsRecord(*rf_results))
-
-        # SVM classification
-        svm_results = classify(X, y, LinearSVC(),
-                               params=svm_params,
-                               test_name=test_name,
-                               debug=debug)
-        test_results.results_list.append(ResultsRecord(*svm_results))
+        for record in result_records:
+            test_results.results_list.append(record)
 
         results += [test_results]
 
@@ -96,8 +104,56 @@ def classify_base(data, y, tests, debug):
     for i in results:
         df_res = pd.DataFrame([('{} ({}) {}'.format(i.tested_features, i.num_features, item.classifier_name),
                                 item.accuracy, item.precision, item.recall, item.f1)
-                               for item in i.results_list], columns=headers)
+                               for item in i.results_list],
+                              columns=headers)
         dfs_res += [df_res]
 
     dfs_res = pd.concat(dfs_res, axis=0)
     dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_base.csv"), index=False)
+
+
+def classify_per_question(data, y, tests, debug):
+    results = []
+
+    for result, test_name in tqdm(tests, file=sys.stdout, total=len(tests)):
+        test_results = TestResults(test_name, len(result), [])
+
+        for ans in range(1, 19):
+            X = get_features(data, result, str(ans))
+            answer_results = AnswersResults(str(ans), [])
+            result_records = get_classifier_result_records(X, y, test_name, debug)
+
+            for record in result_records:
+                answer_results.results_list.append(record)
+
+            test_results.results_list.append(answer_results)
+        results += [test_results]
+
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.expand_frame_repr', False)
+    pd.set_option('max_colwidth', -1)
+    dfs_res = []
+    headers = ['Acc._q{}', 'Prec._q{}', 'Recall_q{}', 'F_q{}']
+    features_list = []
+
+    for result in results:
+        df_tests = []
+
+        # iterate classifier names, all answers use the same classifiers. choose 0
+        for cls in result.results_list[0].results_list:
+            feat_head = '{} ({}) {}'.format(result.tested_features, result.num_features, cls.classifier_name)
+            features_list.append(feat_head)
+
+        for item in result.results_list:
+            ans_headers = [head.format(item.answer_number) for head in headers]
+            df_test = pd.DataFrame([(i.accuracy, i.precision, i.recall, i.f1)
+                                   for i in item.results_list],
+                                   columns=ans_headers)
+            df_tests += [df_test]
+
+        df_tests = pd.concat(df_tests, axis=1)
+        dfs_res += [df_tests]
+
+    dfs_res = pd.concat(dfs_res, axis=0)
+    dfs_res.insert(0, 'Features (#features)', features_list)
+    dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_per_answer.csv"), index=False)
