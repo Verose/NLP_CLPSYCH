@@ -8,7 +8,7 @@
   ],
   "window_method": "surrounding",
   "output": {
-    "plot": true,
+    "plot": false,
     "grid_search": false,
     "grid_search_count": 2
   }

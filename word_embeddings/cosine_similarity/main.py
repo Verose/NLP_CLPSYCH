@@ -54,15 +54,16 @@ def average_cosine_similarity_several_window_sizes(window_sizes):
             win_test.questions_list.append(TTest(j, stat, p))
         win_tests.append(win_test)
 
+        control_scores_by_question, patient_scores_by_question = cosine_calcs.get_user_to_question_scores()
+        for userid, scores in control_scores_by_question.items():
+            for qnum, score in scores.items():
+                cossim_test.questions_list.append(CosSim(userid, qnum, score))
+        for userid, scores in patient_scores_by_question.items():
+            for qnum, score in scores.items():
+                cossim_test.questions_list.append(CosSim(userid, qnum, score))
+        win_cossim.append(cossim_test)
+
         if conf['output']['plot']:
-            control_scores_by_question, patient_scores_by_question = cosine_calcs.get_user_to_question_scores()
-            for userid, scores in control_scores_by_question.items():
-                for qnum, score in scores.items():
-                    cossim_test.questions_list.append(CosSim(userid, qnum, score))
-            for userid, scores in patient_scores_by_question.items():
-                for qnum, score in scores.items():
-                    cossim_test.questions_list.append(CosSim(userid, qnum, score))
-            win_cossim.append(cossim_test)
             plot_groups_scores_by_question(control_scores_by_question, patient_scores_by_question, win_size,
                                            header, OUTPUT_DIR)
             control_scores, patient_scores = cosine_calcs.get_scores_for_groups()
@@ -71,7 +72,7 @@ def average_cosine_similarity_several_window_sizes(window_sizes):
         if conf['mode'] == 'pos':
             control_items = cosine_calcs.calculate_items_for_group('control')
             patients_items = cosine_calcs.calculate_items_for_group('patients')
-            LOGGER.info('Showing results using POS tags: {}'.format(conf['pos_tags']))
+            LOGGER.info('Showing results using POS tags: {}'.format(pos_tags))
             LOGGER.info('Average valid words per answer: Control: {0:.4f}, Patients: {1:.4f}'
                         .format(control_items, patients_items))
 
