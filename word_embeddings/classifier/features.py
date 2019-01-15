@@ -6,10 +6,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from utils import DATA_DIR
 
-pos_tags_features = ['noun',
-                     'verb',
-                     'adjective',
-                     'adverb']
+pos_tags_features = [
+    'noun',
+    'verb',
+    'adjective',
+    'adverb'
+]
 cos_sim_features = [
     'cos_sim'
 ]
@@ -26,18 +28,38 @@ tf_idf_features = [
 ]
 
 
-boosting_params = {"n_estimators": [20, 50, 100, 200, 300, 400], "max_depth": [1, 2, 3, 5, 8, 10],
-                   "learning_rate": [0.01, 0.03, 0.05]}
-rf_params = {"n_estimators": [20, 50, 100, 200, 300, 400], "max_depth": [1, 2, 3, 5],
-             "max_features": [1, None, "sqrt"]}
-svm_params = {"loss": ['hinge', 'squared_hinge'], "C": [0.5, 1.0, 10], "max_iter": [10000]}
+boosting_params = {
+    "n_estimators": [20, 50, 100, 200, 300, 400],
+    "max_depth": [1, 2, 3, 5, 8, 10],
+    "learning_rate": [0.01, 0.03, 0.05]
+}
+rf_params = {
+    "n_estimators": [20, 50, 100, 200, 300, 400],
+    "max_depth": [1, 2, 3, 5],
+    "max_features": [1, None, "sqrt"]
+}
+svm_params = {
+    "loss": ['hinge', 'squared_hinge'],
+    "C": [0.5, 1.0, 10],
+    "max_iter": [10000]
+}
 
 
-# boosting_params = {"n_estimators": [20], "max_depth": [1],
-#                    "learning_rate": [0.01]}
-# rf_params = {"n_estimators": [20], "max_depth": [1],
-#              "max_features": [1]}
-# svm_params = {"loss": ['hinge'], "C": [0.5], "max_iter": [10000]}
+# boosting_params = {
+#     "n_estimators": [20],
+#     "max_depth": [1],
+#     "learning_rate": [0.01]
+# }
+# rf_params = {
+#     "n_estimators": [20],
+#     "max_depth": [1],
+#     "max_features": [1]
+# }
+# svm_params = {
+#     "loss": ['hinge'],
+#     "C": [0.5],
+#     "max_iter": [10000]
+# }
 
 
 def get_answers(removed_ids):

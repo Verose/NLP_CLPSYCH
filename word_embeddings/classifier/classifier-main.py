@@ -4,7 +4,7 @@ import warnings
 
 import pandas as pd
 
-from classifier_tests import classify_base, classify_per_question
+from classifier_tests import classify_base, classify_per_question, classify_question_types
 from features import pos_tags_features, cos_sim_features, sentiment_features, word_related_features, get_features, \
     add_tfidf_features, tf_idf_features
 from utils import DATA_DIR, LOGGER
@@ -21,7 +21,7 @@ def remove_females(df, removed):
 
 def remove_depressed(df, removed):
     # only keep control and schizophrenia groups
-    res = df_res[(df_res['diagnosys_group'] == 'control') | (df_res['diagnosys_group'] == 'schizophrenia')]
+    res = df[(df['diagnosys_group'] == 'control') | (df['diagnosys_group'] == 'schizophrenia')]
     removed.extend(list(df[df['diagnosys_group'] == 'depression']['id']))
     return res
 
@@ -36,21 +36,21 @@ if __name__ == '__main__':
     df_res = remove_females(df_res, removed_ids)
     df_res = remove_depressed(df_res, removed_ids)
     y = df_res['label'].replace({'control': 0, 'patient': 1})
-    all_features = pos_tags_features + cos_sim_features + sentiment_features + word_related_features
-    # all_features = pos_tags_features + cos_sim_features + sentiment_features + word_related_features + tf_idf_features
+    text_features = pos_tags_features + word_related_features + tf_idf_features
+    all_features = text_features + sentiment_features + cos_sim_features
+
     data = get_features(df_res, all_features)
-    # data = add_tfidf_features(data, removed_ids)
+    data = add_tfidf_features(data, removed_ids)
 
     tests = [
         (pos_tags_features, 'PosTags'),
         (cos_sim_features, 'CosSim'),
         (sentiment_features, 'Sentiment'),
         (word_related_features, 'WordRelated'),
-        # (tf_idf_features, 'TfIdf'),
-        (cos_sim_features + pos_tags_features, 'CosSim + PosTags'),
-        # (cos_sim_features + tf_idf_features, 'CosSim + TfIdf'),
-        (pos_tags_features + word_related_features, 'PosTags + WordRelated'),
-        # (pos_tags_features + sentiment_features + word_related_features + tf_idf_features, 'All Text Features'),
+        (tf_idf_features, 'TfIdf'),
+        (cos_sim_features + pos_tags_features + sentiment_features, 'CosSim + PosTags + Sentiment'),
+        (cos_sim_features + tf_idf_features, 'CosSim + TfIdf'),
+        (text_features, 'Text Features'),
         (all_features, 'All Features')
     ]
 
@@ -63,3 +63,8 @@ if __name__ == '__main__':
     LOGGER.info('----------------- Performing Per-Question Tests -----------------')
     LOGGER.info('-----------------------------------------------------------------')
     classify_per_question(data, y, tests, options.debug)
+
+    LOGGER.info('-----------------------------------------------------------------')
+    LOGGER.info('----------------- Performing Question Type Tests ----------------')
+    LOGGER.info('-----------------------------------------------------------------')
+    classify_question_types(data, y, tests, options.debug)

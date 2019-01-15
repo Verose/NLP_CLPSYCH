@@ -15,14 +15,20 @@ from features import get_features, boosting_params, rf_params, svm_params
 from results_records import TestResults, ResultsRecord, AnswersResults
 from utils import LOGGER, OUTPUT_DIR
 
+pd.set_option('display.max_columns', None)
+pd.set_option('display.expand_frame_repr', False)
+pd.set_option('max_colwidth', -1)
+
+
+scoring = {
+    'accuracy': accuracy_scorer,
+    'precision': precision_scorer,
+    'recall': recall_scorer,
+    'f1': f1_scorer,
+}
+
 
 def classify(X, y, model, params, test_name, debug):
-    scoring = {
-        'accuracy': accuracy_scorer,
-        'precision': precision_scorer,
-        'recall': recall_scorer,
-        'f1': f1_scorer,
-    }
     gcv = GridSearchCV(model, params, cv=5, scoring=scoring, refit='accuracy', iid=False)
     gcv.fit(X, y)
     best_model = gcv.best_estimator_
@@ -95,9 +101,6 @@ def classify_base(data, y, tests, debug):
 
         results += [test_results]
 
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.expand_frame_repr', False)
-    pd.set_option('max_colwidth', -1)
     dfs_res = []
     headers = ['Features (#features)', 'Acc.', 'Prec.', 'Recall', 'F']
 
@@ -115,11 +118,11 @@ def classify_base(data, y, tests, debug):
 def classify_per_question(data, y, tests, debug):
     results = []
 
-    for result, test_name in tqdm(tests, file=sys.stdout, total=len(tests)):
-        test_results = TestResults(test_name, len(result), [])
+    for test, test_name in tqdm(tests, file=sys.stdout, total=len(tests)):
+        test_results = TestResults(test_name, len(test), [])
 
         for ans in range(1, 19):
-            X = get_features(data, result, str(ans))
+            X = get_features(data, test, str(ans))
             answer_results = AnswersResults(str(ans), [])
             result_records = get_classifier_result_records(X, y, test_name, debug)
 
@@ -129,9 +132,6 @@ def classify_per_question(data, y, tests, debug):
             test_results.results_list.append(answer_results)
         results += [test_results]
 
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.expand_frame_repr', False)
-    pd.set_option('max_colwidth', -1)
     dfs_res = []
     headers = ['Acc._q{}', 'Prec._q{}', 'Recall_q{}', 'F_q{}']
     features_list = []
@@ -157,3 +157,48 @@ def classify_per_question(data, y, tests, debug):
     dfs_res = pd.concat(dfs_res, axis=0)
     dfs_res.insert(0, 'Features (#features)', features_list)
     dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_per_answer.csv"), index=False)
+
+
+def classify_question_types(data, y, tests, debug):
+    results = []
+
+    for test, test_name in tqdm(tests, file=sys.stdout, total=len(tests)):
+        test_results = TestResults(test_name, len(test), [])
+        answer_ranges = [('([1-9]|1[0-4])', '1-14'), ('(1[5-8])', '15-18')]
+
+        for regex, ans_range in answer_ranges:
+            X = get_features(data, test, regex)
+            answer_results = AnswersResults(ans_range, [])
+            result_records = get_classifier_result_records(X, y, test_name, debug)
+
+            for record in result_records:
+                answer_results.results_list.append(record)
+
+            test_results.results_list.append(answer_results)
+        results += [test_results]
+
+    dfs_res = []
+    headers = ['Acc. q{}', 'Prec. q{}', 'Recall q{}', 'F q{}']
+    features_list = []
+
+    for result in results:
+        df_tests = []
+
+        # iterate classifier names, all answer_ranges use the same classifiers. choose 0
+        for cls in result.results_list[0].results_list:
+            feat_head = '{} ({}) {}'.format(result.tested_features, result.num_features, cls.classifier_name)
+            features_list.append(feat_head)
+
+        for item in result.results_list:
+            ans_headers = [head.format(item.answer_number) for head in headers]
+            df_test = pd.DataFrame([(i.accuracy, i.precision, i.recall, i.f1)
+                                   for i in item.results_list],
+                                   columns=ans_headers)
+            df_tests += [df_test]
+
+        df_tests = pd.concat(df_tests, axis=1)
+        dfs_res += [df_tests]
+
+    dfs_res = pd.concat(dfs_res, axis=0)
+    dfs_res.insert(0, 'Features (#features)', features_list)
+    dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_answer_type.csv"), index=False)
