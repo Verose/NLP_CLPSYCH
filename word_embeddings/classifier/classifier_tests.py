@@ -124,7 +124,7 @@ def classify_per_question(data, y, tests, debug):
         for ans in range(1, 19):
             X = get_features(data, test, str(ans))
             answer_results = AnswersResults(str(ans), [])
-            result_records = get_classifier_result_records(X, y, test_name, debug)
+            result_records = get_classifier_result_records(X, y, test_name + ' q{}'.format(str(ans)), debug)
 
             for record in result_records:
                 answer_results.results_list.append(record)
@@ -133,7 +133,7 @@ def classify_per_question(data, y, tests, debug):
         results += [test_results]
 
     dfs_res = []
-    headers = ['Acc._q{}', 'Prec._q{}', 'Recall_q{}', 'F_q{}']
+    headers = ['Acc. q{}', 'Prec. q{}', 'Recall q{}', 'F q{}']
     features_list = []
 
     for result in results:
@@ -169,7 +169,7 @@ def classify_question_types(data, y, tests, debug):
         for regex, ans_range in answer_ranges:
             X = get_features(data, test, regex)
             answer_results = AnswersResults(ans_range, [])
-            result_records = get_classifier_result_records(X, y, test_name, debug)
+            result_records = get_classifier_result_records(X, y, test_name + ' q{}'.format(ans_range), debug)
 
             for record in result_records:
                 answer_results.results_list.append(record)
