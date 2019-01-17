@@ -6,7 +6,7 @@ DATA_DIR = os.path.join('..', 'data')
 
 LOGGER = logging.getLogger('Main')
 LOGGER.setLevel(logging.INFO)
-file_handler = logging.FileHandler(filename=os.path.join(OUTPUT_DIR, 'classifier_outputs.txt'))
+file_handler = logging.FileHandler(filename=os.path.join(OUTPUT_DIR, 'classifier_outputs.txt'), encoding='utf-8')
 formatter = logging.Formatter(u"%(message)s")
 file_handler.setFormatter(formatter)
 LOGGER.addHandler(file_handler)
