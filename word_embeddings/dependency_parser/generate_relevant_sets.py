@@ -98,6 +98,8 @@ def get_relevant_set(data, i):
             if not ans:
                 continue
 
+            ans = ans.replace('"', '')
+
             for sentence in ans.split('.'):
                 if not sentence:
                     continue
