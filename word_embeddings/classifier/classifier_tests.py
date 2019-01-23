@@ -4,7 +4,9 @@ import sys
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.metrics import classification_report
 from sklearn.metrics.scorer import accuracy_scorer, precision_scorer, recall_scorer, f1_scorer
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import LinearSVC
@@ -28,7 +30,17 @@ scoring = {
 }
 
 
-def classify(X, y, model, params, test_name, debug):
+def classify_cv_results(X, y, model, params, test_name, debug):
+    """
+    Used to get cross-validated results.
+    :param X: features
+    :param y: gold label
+    :param model: model to fit
+    :param params: parameters for GridSearchCV
+    :param test_name: name of the test
+    :param debug: print debug info to logger
+    :return: classifier_name, accuracy, precision, recall, f1
+    """
     gcv = GridSearchCV(model, params, cv=5, scoring=scoring, refit='accuracy', iid=False)
     gcv.fit(X, y)
     best_model = gcv.best_estimator_
@@ -54,38 +66,107 @@ def classify(X, y, model, params, test_name, debug):
     return classifier_name, accuracy, precision, recall, f1
 
 
-def get_classifier_result_records(X, y, test_name, debug):
+def classify_with_significance(X, y, model, params):
+    """
+    Used to get per-class results in order to run significance tests on
+    :param X: features
+    :param y: gold label
+    :param model: model to fit
+    :param params: parameters for GridSearchCV
+    :return: (pre_cont, rec_cont, f1_cont), (pre_pat, rec_pat, f1_pat)
+    """
+    gcv = GridSearchCV(model, params, cv=5, scoring=scoring, refit='accuracy', iid=False)
+    gcv.fit(X, y)
+    best_model = gcv.best_estimator_
+
+    y_pred = best_model.predict(X)
+    results = classification_report(y, y_pred, target_names=['control', 'patients'], output_dict=True)
+
+    pre_cont = results['control']['precision']
+    rec_cont = results['control']['recall']
+    f1_cont = results['control']['f1-score']
+    pre_pat = results['patients']['precision']
+    rec_pat = results['patients']['recall']
+    f1_pat = results['patients']['f1-score']
+
+    return (pre_cont, rec_cont, f1_cont), (pre_pat, rec_pat, f1_pat)
+
+
+def get_best_classifier_results_records(X, y):
+    # RandomForest classification
+    control, patients = classify_with_significance(X, y, RandomForestClassifier(), params=rf_params)
+    cont_result_record = ResultsRecord('control', None, *control)
+    pat_result_record = ResultsRecord('patients', None, *patients)
+
+    return cont_result_record, pat_result_record
+
+
+def get_classifiers_results_records(X, y, test_name, debug):
     result_records = []
 
     # XGBoost classification
-    xgboost_results = classify(X, y, XGBClassifier(),
-                               params=boosting_params,
-                               test_name=test_name,
-                               debug=debug)
+    xgboost_results = classify_cv_results(X, y, XGBClassifier(),
+                                          params=boosting_params,
+                                          test_name=test_name,
+                                          debug=debug)
     result_records.append(ResultsRecord(*xgboost_results))
 
     # GradientBoosting classification
-    gb_results = classify(X, y, GradientBoostingClassifier(),
-                          params=boosting_params,
-                          test_name=test_name,
-                          debug=debug)
+    gb_results = classify_cv_results(X, y, GradientBoostingClassifier(),
+                                     params=boosting_params,
+                                     test_name=test_name,
+                                     debug=debug)
     result_records.append(ResultsRecord(*gb_results))
 
     # RandomForest classification
-    rf_results = classify(X, y, RandomForestClassifier(),
-                          params=rf_params,
-                          test_name=test_name,
-                          debug=debug)
+    rf_results = classify_cv_results(X, y, RandomForestClassifier(),
+                                     params=rf_params,
+                                     test_name=test_name,
+                                     debug=debug)
     result_records.append(ResultsRecord(*rf_results))
 
     # SVM classification
-    svm_results = classify(X, y, LinearSVC(),
-                           params=svm_params,
-                           test_name=test_name,
-                           debug=debug)
+    svm_results = classify_cv_results(X, y, LinearSVC(),
+                                      params=svm_params,
+                                      test_name=test_name,
+                                      debug=debug)
     result_records.append(ResultsRecord(*svm_results))
 
     return result_records
+
+
+def classify_base_best_classifier(data, y, tests):
+    cont_results = []
+    pat_results = []
+
+    for test, test_name in tqdm(tests, file=sys.stdout, total=len(tests)):
+        X = get_features(data, test)
+        cont_test_results = TestResults(test_name, len(X.columns), [])
+        pat_test_results = TestResults(test_name, len(X.columns), [])
+        cont_result_record, pat_result_record = get_best_classifier_results_records(X, y)
+        cont_test_results.results_list.append(cont_result_record)
+        pat_test_results.results_list.append(pat_result_record)
+        cont_results += [cont_test_results]
+        pat_results += [pat_test_results]
+
+    cont_cls_results = []
+    pat_cls_results = []
+
+    for i in cont_results:
+        res = i.results_list[0]  # only 1 item
+        res = [res.precision, res.recall, res.f1]
+        cont_cls_results += [res]
+
+    for i in pat_results:
+        res = i.results_list[0]  # only 1 item
+        res = [res.precision, res.recall, res.f1]
+        pat_cls_results += [res]
+
+    tstatistic, pvalue = stats.ttest_ind(cont_cls_results, pat_cls_results)
+    headers = ['t-statistic', 'p-value']
+    df = pd.DataFrame([(t, p) for t, p in zip(tstatistic, pvalue)], columns=headers)
+    df.insert(0, 'scorer', ['precision', 'recall', 'f1-score'])
+    df.to_csv(os.path.join(OUTPUT_DIR, "t-test_best_classifier.csv"), index=False)
 
 
 def classify_base(data, y, tests, debug):
@@ -94,7 +175,7 @@ def classify_base(data, y, tests, debug):
     for test, test_name in tqdm(tests, file=sys.stdout, total=len(tests)):
         X = get_features(data, test)
         test_results = TestResults(test_name, len(X.columns), [])
-        result_records = get_classifier_result_records(X, y, test_name, debug)
+        result_records = get_classifiers_results_records(X, y, test_name, debug)
 
         for record in result_records:
             test_results.results_list.append(record)
@@ -124,7 +205,7 @@ def classify_per_question(data, y, tests, debug):
         for ans in range(1, 19):
             X = get_features(data, test, str(ans))
             answer_results = AnswersResults(str(ans), [])
-            result_records = get_classifier_result_records(X, y, test_name + ' q{}'.format(str(ans)), debug)
+            result_records = get_classifiers_results_records(X, y, test_name + ' q{}'.format(str(ans)), debug)
 
             for record in result_records:
                 answer_results.results_list.append(record)
@@ -169,7 +250,7 @@ def classify_question_types(data, y, tests, debug):
         for regex, ans_range in answer_ranges:
             X = get_features(data, test, regex)
             answer_results = AnswersResults(ans_range, [])
-            result_records = get_classifier_result_records(X, y, test_name + ' q{}'.format(ans_range), debug)
+            result_records = get_classifiers_results_records(X, y, test_name + ' q{}'.format(ans_range), debug)
 
             for record in result_records:
                 answer_results.results_list.append(record)
