@@ -95,6 +95,9 @@ def get_dependency_tree_for_sentence(sent, i):
 def get_relevant_set(data, i):
     for _, row in tqdm(data.iterrows(), file=sys.stdout, total=len(data), desc='All Users'):
         for ans in tqdm(row, file=sys.stdout, total=len(row), leave=False, desc='Questions'):
+            if not ans:
+                continue
+
             for sentence in ans.split('.'):
                 if not sentence:
                     continue
