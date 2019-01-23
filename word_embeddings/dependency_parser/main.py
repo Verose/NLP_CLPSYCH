@@ -11,9 +11,6 @@ from tqdm import tqdm
 
 DATA_DIR = os.path.join('..', 'data')
 OUTPUTS_DIR = os.path.join('..', 'outputs')
-# sent = "גנן גידל דגן בגן"
-# sent = "הבית הלבן הגדול"
-# sent = "היא הלכה מהר"
 
 noun_tags = ['NN', 'NNP', 'NNPS', 'NNS']
 adjective_tags = ['JJ', 'JJR', 'JJS']
