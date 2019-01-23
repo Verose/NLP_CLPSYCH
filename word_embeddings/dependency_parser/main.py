@@ -1,4 +1,3 @@
-import glob
 import json
 import os
 import sys
@@ -17,18 +16,15 @@ OUTPUTS_DIR = os.path.join('..', 'outputs')
 
 
 def get_response(headers, data):
-    counter = 0
-    retry_timer = 5
+    retry_timer = 1
 
     while True:
         try:
             response = requests.post('http://onlp.openu.org.il:8000/yap/heb/joint', headers=headers, data=data)
             return response
         except requests.exceptions.ConnectionError:
-            counter += 1
-
-            if counter == 100:
-                print('More than 500 seconds without getting a response! Exiting...')
+            if retry_timer > 1000:
+                print('\nMore than 1000 seconds without getting a response! Exiting...')
                 exit(0)
 
             sleep(retry_timer)
