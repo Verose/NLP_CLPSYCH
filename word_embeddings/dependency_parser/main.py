@@ -67,26 +67,24 @@ def get_dependency_tree_for_sentence(sent, i):
     with open(os.path.join(OUTPUTS_DIR, 'tmp', 'output_dep_{}.txt'.format(i)), encoding='utf-8') as f:
         dep_tree = f.read()
 
-    dep_tree = dep_tree.split('\n')
+    dep_tree = dep_tree.split('\t_\t_\n')  # every line ends with \t_\t_\n
     dep_dict = {}
 
     for dep in dep_tree:
-        if not dep:
+        if not dep or dep == '\n':
             continue
 
-        dep = dep[:-4]  # remove trailing \t\t
+        dep = dep.replace('\n', '')
         dep = dep.split('\t')
         num = dep[0]
         word = dep[1]
         tag = dep[3]
-        tag2 = dep[4]
         head = dep[6]
         dependency = dep[7]
 
         dep_dict[num] = {
             "word": word,
             "tag": tag,
-            "tag2": tag2,
             "next": head,
             "dep": dependency
         }
@@ -104,7 +102,7 @@ def get_relevant_set(data, i):
                 dep_tree = get_dependency_tree_for_sentence(sentence, i)
 
                 for dependency in dep_tree.values():
-                    if dependency['dep'] == 'ROOT':
+                    if dependency['next'] == '0':
                         continue
 
                     curr_tag = dependency['tag']
