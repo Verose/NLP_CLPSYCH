@@ -71,10 +71,14 @@ def get_dependency_tree_for_sentence(sent, i):
     dep_dict = {}
 
     for dep in dep_tree:
-        if not dep or dep == '\n':
+        if not dep:
             continue
 
         dep = dep.replace('\n', '')
+
+        if not dep:
+            continue
+
         dep = dep.split('\t')
         num = dep[0]
         word = dep[1]
@@ -95,7 +99,7 @@ def get_dependency_tree_for_sentence(sent, i):
 def get_relevant_set(data, i):
     for _, row in tqdm(data.iterrows(), file=sys.stdout, total=len(data), desc='All Users'):
         for ans in tqdm(row, file=sys.stdout, total=len(row), leave=False, desc='Questions'):
-            if not ans:
+            if not ans or ans is pd.np.nan:  # some users didn't answer all of the questions
                 continue
 
             ans = ans.replace('."', '".')
