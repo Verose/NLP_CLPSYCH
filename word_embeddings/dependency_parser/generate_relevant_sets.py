@@ -16,6 +16,7 @@ noun_tags = ['NN', 'NNP', 'NNPS', 'NNS']
 adjective_tags = ['JJ', 'JJR', 'JJS']
 verb_tags = ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
 adverb_tags = ['RB', 'RBR', 'RBS', 'RP']
+punctuation = string.punctuation.replace('-', '')
 
 
 def read_relevant_set(pos_tag, group):
@@ -26,7 +27,7 @@ def read_relevant_set(pos_tag, group):
 
 
 def get_dependency_tree_for_sentence(sent, i):
-    sent = sent.translate(str.maketrans("", "", string.punctuation))
+    sent = sent.translate(str.maketrans("", "", punctuation))
     with open(os.path.join(OUTPUTS_DIR, 'tmp', 'sentence_{}.txt'.format(i)), 'w', encoding='utf-8', newline='\n') as f:
         [f.write(u'{}\n'.format(word)) for word in sent.split(' ')]
         f.write('\n')
@@ -116,7 +117,8 @@ def repair_answer(sentence):
     sentence = sentence.replace('\n', ' ')
 
     # will otherwise be removed later as punctuation
-    sentence = sentence.replace('+', 'פלוס')
+    sentence = sentence.replace('+', ' פלוס ')
+    sentence = sentence.replace('/', ' או ')
 
     # misc
     sentence = sentence.replace('prefix=', '')
