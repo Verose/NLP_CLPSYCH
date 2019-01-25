@@ -76,7 +76,7 @@ def get_dependency_tree_for_sentence(sent, i):
 
     dep_tree = dep_tree.split('\t_\t_\n')  # every line ends with \t_\t_\n
     dep_dict = {}
-    # assert len([line for line in dep_tree if line.startswith('1\t')]) == 1
+    assert len([line for line in dep_tree if line.strip().startswith('1\t')]) < 2  # make sure no multiple sentences
 
     for dep in dep_tree:
         if not dep:
@@ -104,6 +104,29 @@ def get_dependency_tree_for_sentence(sent, i):
     return dep_dict
 
 
+def repair_answer(sentence):
+    # wrongly placed quotation marks
+    sentence = sentence.replace('."', '".')
+
+    # redundant space before punctuation
+    sentence = sentence.replace(' ,', ',')
+    sentence = sentence.replace(' .', '.')
+
+    # no need for newline (solves problem with newline in the middle of a sentence)
+    sentence = sentence.replace('\n', ' ')
+
+    # will otherwise be removed later as punctuation
+    sentence = sentence.replace('+', 'פלוס')
+
+    # misc
+    sentence = sentence.replace('prefix=', '')
+
+    # redundant spaces
+    while '  ' in sentence:
+        sentence = sentence.replace('  ', ' ')
+    return sentence
+
+
 def get_relevant_set(data, i):
     relevant_set_nouns = defaultdict(list)
     relevant_set_verbs = defaultdict(list)
@@ -113,9 +136,7 @@ def get_relevant_set(data, i):
             if not ans or ans is pd.np.nan:  # some users didn't answer all of the questions
                 continue
 
-            ans = ans.replace('."', '".')
-            ans = ans.replace(' ,', ',')
-            ans = ans.replace(' .', '.')
+            ans = repair_answer(ans)
 
             for sentence in ans.split('.'):
                 if not sentence:
@@ -160,10 +181,7 @@ def get_reference_set(data, i):
             if not sentence or sentence is pd.np.nan:  # some users didn't answer all of the questions
                 continue
 
-            sentence = sentence.replace('."', '".')
-            sentence = sentence.replace(' ,', ',')
-            sentence = sentence.replace(' .', '.')
-            sentence = sentence.replace('prefix=', '')
+            sentence = repair_answer(sentence)
             dep_tree = get_dependency_tree_for_sentence(sentence, i)
 
             for dependency in dep_tree.values():
