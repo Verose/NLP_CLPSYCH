@@ -118,9 +118,12 @@ def repair_answer(sentence):
         sentence = sentence.replace(' ,', ',')
     while ' .' in sentence:
         sentence = sentence.replace(' .', '.')
+    sentence = sentence.replace('( ', '(')
+    sentence = sentence.replace(' )', ')')
 
     # will otherwise be removed later as punctuation
     sentence = sentence.replace('+', ' פלוס ')
+    sentence = sentence.replace('%', ' אחוז ')
     sentence = sentence.replace('ו/או', 'ו או')
     sentence = sentence.replace('/', ' או ')
     sentence = sentence.replace('__', 'איקס')
