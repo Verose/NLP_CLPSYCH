@@ -106,6 +106,9 @@ def get_dependency_tree_for_sentence(sent, i):
 
 
 def repair_answer(sentence):
+    # no need for newline (solves problem with newline in the middle of a sentence)
+    sentence = sentence.replace('\n', ' ')
+
     # wrongly placed quotation marks
     sentence = sentence.replace('."', '".')
 
@@ -113,12 +116,11 @@ def repair_answer(sentence):
     sentence = sentence.replace(' ,', ',')
     sentence = sentence.replace(' .', '.')
 
-    # no need for newline (solves problem with newline in the middle of a sentence)
-    sentence = sentence.replace('\n', ' ')
-
     # will otherwise be removed later as punctuation
     sentence = sentence.replace('+', ' פלוס ')
+    sentence = sentence.replace('ו/או', 'ו או')
     sentence = sentence.replace('/', ' או ')
+    sentence = sentence.replace('__', 'איקס')
 
     # misc
     sentence = sentence.replace('prefix=', '')
