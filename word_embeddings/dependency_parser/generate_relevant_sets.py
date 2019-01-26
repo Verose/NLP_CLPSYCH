@@ -28,6 +28,10 @@ def read_relevant_set(pos_tag, group):
 
 def get_dependency_tree_for_sentence(sent, i):
     sent = sent.translate(str.maketrans("", "", punctuation))
+
+    while '  ' in sent:  # fix sentences
+        sent = sent.replace('  ', ' ')
+
     with open(os.path.join(OUTPUTS_DIR, 'tmp', 'sentence_{}.txt'.format(i)), 'w', encoding='utf-8', newline='\n') as f:
         [f.write(u'{}\n'.format(word)) for word in sent.split(' ')]
         f.write('\n')
@@ -77,7 +81,6 @@ def get_dependency_tree_for_sentence(sent, i):
 
     dep_tree = dep_tree.split('\t_\t_\n')  # every line ends with \t_\t_\n
     dep_dict = {}
-    assert len([line for line in dep_tree if line.strip().startswith('1\t')]) < 2  # make sure no multiple sentences
 
     for dep in dep_tree:
         if not dep:
@@ -120,6 +123,8 @@ def repair_answer(sentence):
         sentence = sentence.replace(' .', '.')
     sentence = sentence.replace('( ', '(')
     sentence = sentence.replace(' )', ')')
+    sentence = sentence.replace(' ?', '?')
+    sentence = sentence.replace(' :', ':')
 
     # will otherwise be removed later as punctuation
     sentence = sentence.replace('+', ' פלוס ')
@@ -180,15 +185,15 @@ def get_reference_set(data, i):
     patients_nouns = read_relevant_set('nouns', 'patients')
     patients_verbs = read_relevant_set('verbs', 'patients')
 
-    relevant_set_nouns = defaultdict(list)
-    relevant_set_verbs = defaultdict(list)
+    reference_set_nouns = defaultdict(list)
+    reference_set_verbs = defaultdict(list)
 
     for article in tqdm(data, file=sys.stdout, total=len(data), desc='Articles'):
         with open(article, encoding='utf-8') as f:
             article = f.readlines()[:-1]  # last line is article metadata
 
         for sentence in tqdm(article, file=sys.stdout, total=len(article), leave=False, desc='Sentences'):
-            if not sentence or sentence is pd.np.nan:  # some users didn't answer all of the questions
+            if not sentence or '•' in sentence:  # skip empty sentences and lists
                 continue
 
             sentence = repair_answer(sentence)
@@ -207,14 +212,14 @@ def get_reference_set(data, i):
                 relevant_verb = next_word in control_verbs or next_word in patients_verbs
 
                 if curr_tag in adjective_tags and next_tag in noun_tags and relevant_noun:
-                    relevant_set_nouns[next_word].append(curr_word)
+                    reference_set_nouns[next_word].append(curr_word)
                 elif curr_tag in adverb_tags and next_tag in verb_tags and relevant_verb:
-                    relevant_set_verbs[next_word].append(curr_word)
+                    reference_set_verbs[next_word].append(curr_word)
 
     with open(os.path.join(OUTPUTS_DIR, 'reference_set_nouns_{}.json'.format(i)), 'w', encoding='utf-8') as out_file:
-        json.dump(relevant_set_nouns, out_file, ensure_ascii=False)
+        json.dump(reference_set_nouns, out_file, ensure_ascii=False)
     with open(os.path.join(OUTPUTS_DIR, 'reference_set_verbs_{}.json'.format(i)), 'w', encoding='utf-8') as out_file:
-        json.dump(relevant_set_verbs, out_file, ensure_ascii=False)
+        json.dump(reference_set_verbs, out_file, ensure_ascii=False)
 
 
 if __name__ == '__main__':
