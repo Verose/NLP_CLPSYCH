@@ -111,6 +111,7 @@ def repair_answer(sentence):
 
     # wrongly placed quotation marks
     sentence = sentence.replace('."', '".')
+    sentence = sentence.replace(' "', '"')
 
     # redundant space before punctuation
     sentence = sentence.replace(' ,', ',')
@@ -140,6 +141,7 @@ def get_relevant_set(data, i):
             if not ans or ans is pd.np.nan:  # some users didn't answer all of the questions
                 continue
 
+            ans = '"תפסיק, אל תדרוך על הכינור שלי " והמשיך והמשיך עד שהכינור כבר נשבר ממש'
             ans = repair_answer(ans)
 
             for sentence in ans.split('.'):
