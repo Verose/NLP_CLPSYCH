@@ -116,22 +116,27 @@ def repair_answer(sentence):
     sentence = sentence.replace('."', '".')
     sentence = sentence.replace(' "', '"')
 
-    # redundant space before punctuation
-    while ' ,' in sentence:
-        sentence = sentence.replace(' ,', ',')
-    while ' .' in sentence:
-        sentence = sentence.replace(' .', '.')
-    sentence = sentence.replace('( ', '(')
-    sentence = sentence.replace(' )', ')')
-    sentence = sentence.replace(' ?', '?')
-    sentence = sentence.replace(' :', ':')
-
     # will otherwise be removed later as punctuation
     sentence = sentence.replace('+', ' פלוס ')
     sentence = sentence.replace('%', ' אחוז ')
     sentence = sentence.replace('ו/או', 'ו או')
     sentence = sentence.replace('/', ' או ')
     sentence = sentence.replace('__', 'איקס')
+
+    # redundant space before punctuation
+    while ' ,' in sentence:
+        sentence = sentence.replace(' ,', ',')
+    while ' .' in sentence:
+        sentence = sentence.replace(' .', '.')
+
+    while '( ' in sentence:
+        sentence = sentence.replace('( ', '(')
+    while ' )' in sentence:
+        sentence = sentence.replace(' )', ')')
+    while ' ?' in sentence:
+        sentence = sentence.replace(' ?', '?')
+    while ' :' in sentence:
+        sentence = sentence.replace(' :', ':')
 
     # misc
     sentence = sentence.replace('prefix=', '')
@@ -179,7 +184,7 @@ def get_relevant_set(data, i):
         json.dump(relevant_set_verbs, out_file, ensure_ascii=False)
 
 
-def get_reference_set(data, i):
+def get_reference_set(data, i, dataset):
     control_nouns = read_relevant_set('nouns', 'control')
     control_verbs = read_relevant_set('verbs', 'control')
     patients_nouns = read_relevant_set('nouns', 'patients')
@@ -190,7 +195,7 @@ def get_reference_set(data, i):
 
     for article in tqdm(data, file=sys.stdout, total=len(data), desc='Articles'):
         with open(article, encoding='utf-8') as f:
-            article = f.readlines()[:-1]  # last line is article metadata
+            article = f.readlines()
 
         for sentence in tqdm(article, file=sys.stdout, total=len(article), leave=False, desc='Sentences'):
             if not sentence or '•' in sentence:  # skip empty sentences and lists
@@ -216,9 +221,17 @@ def get_reference_set(data, i):
                 elif curr_tag in adverb_tags and next_tag in verb_tags and relevant_verb:
                     reference_set_verbs[next_word].append(curr_word)
 
-    with open(os.path.join(OUTPUTS_DIR, 'reference_set_nouns_{}.json'.format(i)), 'w', encoding='utf-8') as out_file:
+    with open(
+            os.path.join(OUTPUTS_DIR, 'reference_set_nouns_{}_{}.json'.format(i, dataset)),
+            'w',
+            encoding='utf-8'
+    ) as out_file:
         json.dump(reference_set_nouns, out_file, ensure_ascii=False)
-    with open(os.path.join(OUTPUTS_DIR, 'reference_set_verbs_{}.json'.format(i)), 'w', encoding='utf-8') as out_file:
+    with open(
+            os.path.join(OUTPUTS_DIR, 'reference_set_verbs_{}_{}.json'.format(i, dataset)),
+            'w',
+            encoding='utf-8'
+    ) as out_file:
         json.dump(reference_set_verbs, out_file, ensure_ascii=False)
 
 
@@ -252,4 +265,4 @@ if __name__ == '__main__':
         articles = [os.path.join(articles_path, article) for article in articles]
         articles = articles[start(articles):end(articles)]
 
-        get_reference_set(articles, block)
+        get_reference_set(articles, block, options.folder)
