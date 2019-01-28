@@ -228,6 +228,7 @@ if __name__ == '__main__':
     parser.add_option('-i', action="store", type="int", help="job (block) index")
     parser.add_option('-k', action="store", type="int", help="jobs amount")
     parser.add_option('--set_type', action="store", choices=['relevant', 'reference'])
+    parser.add_option('--folder', action="store", default="doctors_articles")
     options, remainder = parser.parse_args()
 
     block = options.i
@@ -246,7 +247,7 @@ if __name__ == '__main__':
 
         get_relevant_set(df, block)
     elif options.set_type == 'reference':
-        articles_path = os.path.join(DATA_DIR, 'doctors_articles')
+        articles_path = os.path.join(DATA_DIR, options.folder)
         articles = os.listdir(articles_path)
         articles = [os.path.join(articles_path, article) for article in articles]
         articles = articles[start(articles):end(articles)]
