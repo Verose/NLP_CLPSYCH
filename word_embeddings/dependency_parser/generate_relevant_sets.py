@@ -26,13 +26,19 @@ def read_relevant_set(pos_tag, group):
     return relevant_set
 
 
-def get_dependency_tree_for_sentence(sent, i):
+def get_dependency_tree_for_sentence(sent, i, dataset=None):
     sent = sent.translate(str.maketrans("", "", punctuation))
+    unique_name = '{}'.format(i) if not dataset else '{}_{}'.format(i, dataset)
 
     while '  ' in sent:  # fix sentences
         sent = sent.replace('  ', ' ')
 
-    with open(os.path.join(OUTPUTS_DIR, 'tmp', 'sentence_{}.txt'.format(i)), 'w', encoding='utf-8', newline='\n') as f:
+    with open(
+            os.path.join(OUTPUTS_DIR, 'tmp', 'sentence_{}.txt'.format(unique_name)),
+            'w',
+            encoding='utf-8',
+            newline='\n'
+    ) as f:
         [f.write(u'{}\n'.format(word)) for word in sent.split(' ')]
         f.write('\n')
     go_workspace = os.environ['GOPATH']
@@ -43,9 +49,9 @@ def get_dependency_tree_for_sentence(sent, i):
         yap,
         "hebma",
         "-raw",
-        os.path.join(OUTPUTS_DIR, 'tmp', 'sentence_{}.txt'.format(i)),
+        os.path.join(OUTPUTS_DIR, 'tmp', 'sentence_{}.txt'.format(unique_name)),
         "-out",
-        os.path.join(OUTPUTS_DIR, 'tmp', "output_{}.txt".format(i))
+        os.path.join(OUTPUTS_DIR, 'tmp', "output_{}.txt".format(unique_name))
     ]
     p = subprocess.Popen(hebma_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     p.communicate()
@@ -56,18 +62,18 @@ def get_dependency_tree_for_sentence(sent, i):
         "-f",
         os.path.join(yap_path, 'conf', "jointzeager.yaml"),
         "-in",
-        os.path.join(OUTPUTS_DIR, 'tmp', "output_{}.txt".format(i)),
+        os.path.join(OUTPUTS_DIR, 'tmp', "output_{}.txt".format(unique_name)),
         "-l",
         os.path.join(yap_path, 'conf', "hebtb.labels.conf"),
         "-m",
         os.path.join(yap_path, 'data', "joint_arc_zeager_model_temp_i33.b64"),
         "-nolemma",
         "-oc",
-        os.path.join(OUTPUTS_DIR, 'tmp', "output_dep_{}.txt".format(i)),
+        os.path.join(OUTPUTS_DIR, 'tmp', "output_dep_{}.txt".format(unique_name)),
         "-om",
-        os.path.join(OUTPUTS_DIR, 'tmp', "output_om_{}.txt".format(i)),
+        os.path.join(OUTPUTS_DIR, 'tmp', "output_om_{}.txt".format(unique_name)),
         "-os",
-        os.path.join(OUTPUTS_DIR, 'tmp', "output_os_{}.txt".format(i)),
+        os.path.join(OUTPUTS_DIR, 'tmp', "output_os_{}.txt".format(unique_name)),
         "-jointstr",
         "ArcGreedy",
         "-oraclestr",
@@ -76,7 +82,10 @@ def get_dependency_tree_for_sentence(sent, i):
     p = subprocess.Popen(joint_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     p.communicate()
 
-    with open(os.path.join(OUTPUTS_DIR, 'tmp', 'output_dep_{}.txt'.format(i)), encoding='utf-8') as f:
+    with open(
+            os.path.join(OUTPUTS_DIR, 'tmp', 'output_dep_{}.txt'.format('{}'.format(unique_name))),
+            encoding='utf-8'
+    ) as f:
         dep_tree = f.read()
 
     dep_tree = dep_tree.split('\t_\t_\n')  # every line ends with \t_\t_\n
@@ -202,7 +211,7 @@ def get_reference_set(data, i, dataset):
                 continue
 
             sentence = repair_answer(sentence)
-            dep_tree = get_dependency_tree_for_sentence(sentence, i)
+            dep_tree = get_dependency_tree_for_sentence(sentence, i, dataset)
 
             for dependency in dep_tree.values():
                 if dependency['next'] == '0':
