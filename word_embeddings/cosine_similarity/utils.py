@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import string
@@ -35,6 +36,16 @@ def read_conf(data_dir):
     json_file = open(os.path.join(data_dir, 'medical.json')).read()
     json_data = json.loads(json_file, encoding='utf-8')
     return json_data
+
+
+def pos_tags_jsons_generator(data_dir):
+    json_pattern = os.path.join(data_dir, 'answers_pos_tags', '*.json')
+    json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
+
+    for file in json_files:
+        with open(file, encoding='utf-8') as f:
+            ans_pos_tags = json.load(f)
+            yield int(os.path.basename(file).split('.')[0]), ans_pos_tags
 
 
 def plot_groups_histograms(control_scores_by_question,

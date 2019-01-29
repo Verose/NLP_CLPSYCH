@@ -1,6 +1,3 @@
-import glob
-import json
-import os
 import string
 import sys
 
@@ -8,7 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
 from word_embeddings.cosine_similarity.sliding_window import SlidingWindow
-from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word
+from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word, pos_tags_jsons_generator
 
 
 class POSSlidingWindow(SlidingWindow):
@@ -100,13 +97,10 @@ class POSSlidingWindow(SlidingWindow):
         return {'scores': scores, 'repetitions': repetitions, 'items': items}
 
     def _read_answers_pos_tags(self):
-        json_pattern = os.path.join(self._data_dir, 'answers_pos_tags', '*.json')
-        json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
+        pos_tags_generator = pos_tags_jsons_generator(self._data_dir)
 
-        for file in json_files:
-            with open(file, encoding='utf-8') as f:
-                ans_pos_tags = json.load(f)
-                self._answers_to_user_id_pos_data[int(os.path.basename(file).split('.')[0])] = ans_pos_tags
+        for answer_num, ans_pos_tags in pos_tags_generator:
+            self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
 
     def _avg_answer_score_by_pos_tags(self, answer, pos_tags):
         """

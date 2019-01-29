@@ -26,6 +26,13 @@ def read_relevant_set(pos_tag, group):
     return relevant_set
 
 
+def read_reference_set(pos_tag):
+    with open(os.path.join(DATA_DIR, 'reference_sets', 'norm_reference_set_{}.json'.format(pos_tag)),
+              encoding='utf-8') as f:
+        relevant_set = json.load(f)
+    return relevant_set
+
+
 def get_dependency_tree_for_sentence(sent, i, dataset=None):
     sent = sent.translate(str.maketrans("", "", punctuation))
     unique_name = '{}'.format(i) if not dataset else '{}_{}'.format(i, dataset)
