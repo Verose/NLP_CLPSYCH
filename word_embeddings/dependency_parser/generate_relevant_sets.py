@@ -35,6 +35,7 @@ def read_reference_set(pos_tag):
 
 def get_dependency_tree_for_sentence(sent, i, dataset=None):
     sent = sent.translate(str.maketrans("", "", punctuation))
+    dataset = dataset.replace('/', '_') if dataset else None  # support nested folders
     unique_name = '{}'.format(i) if not dataset else '{}_{}'.format(i, dataset)
 
     while '  ' in sent:  # fix sentences
@@ -124,7 +125,7 @@ def get_dependency_tree_for_sentence(sent, i, dataset=None):
     return dep_dict
 
 
-def repair_answer(sentence):
+def repair_document(sentence):
     # no need for newline (solves problem with newline in the middle of a sentence)
     sentence = sentence.replace('\n', ' ')
 
@@ -172,7 +173,7 @@ def get_relevant_set(data, i):
             if not ans or ans is pd.np.nan:  # some users didn't answer all of the questions
                 continue
 
-            ans = repair_answer(ans)
+            ans = repair_document(ans)
 
             for sentence in ans.split('.'):
                 if not sentence:
@@ -217,7 +218,7 @@ def get_reference_set(data, i, dataset):
             if not sentence or '•' in sentence:  # skip empty sentences and lists
                 continue
 
-            sentence = repair_answer(sentence)
+            sentence = repair_document(sentence)
             dep_tree = get_dependency_tree_for_sentence(sentence, i, dataset)
 
             for dependency in dep_tree.values():
