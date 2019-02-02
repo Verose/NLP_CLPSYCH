@@ -35,7 +35,6 @@ def read_reference_set(pos_tag):
 
 def get_dependency_tree_for_sentence(sent, i, dataset=None):
     sent = sent.translate(str.maketrans("", "", punctuation))
-    dataset = dataset.replace('/', '_') if dataset else None  # support nested folders
     unique_name = '{}'.format(i) if not dataset else '{}_{}'.format(i, dataset)
 
     while '  ' in sent:  # fix sentences
@@ -202,6 +201,7 @@ def get_relevant_set(data, i):
 
 
 def get_reference_set(data, i, dataset):
+    dataset = dataset.replace('/', '_') if dataset else None  # support nested folders
     control_nouns = read_relevant_set('nouns', 'control')
     control_verbs = read_relevant_set('verbs', 'control')
     patients_nouns = read_relevant_set('nouns', 'patients')
