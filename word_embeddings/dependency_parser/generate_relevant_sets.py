@@ -212,7 +212,11 @@ def get_reference_set(data, i, dataset):
 
     for article in tqdm(data, file=sys.stdout, total=len(data), desc='Articles'):
         with open(article, encoding='utf-8') as f:
-            article = f.readlines()
+            if 'haaretz' in dataset:
+                article = f.read()
+                article = article.replace('\n', '').split('.')[:-1]  # last is blank
+            else:
+                article = f.readlines()
 
         for sentence in tqdm(article, file=sys.stdout, total=len(article), leave=False, desc='Sentences'):
             if not sentence or '•' in sentence:  # skip empty sentences and lists
