@@ -43,6 +43,9 @@ class DependencyCosSimScorer:
         self.idf_scores = IdfScores(self.get_documents(), repair_document)
         self.idf_scores.calculate_idf_scores()
 
+        self.missing_idf = {}
+        self.missing_words = {}
+
     @staticmethod
     def get_documents():
         files_grabbed = []
@@ -58,19 +61,19 @@ class DependencyCosSimScorer:
 
         for context in relevant_contexts:
             idf = self.idf_scores.get_idf_score(context)
-            if idf:  # TODO: missing idf score
+            if idf:
                 context_rep = get_vector_repr_of_word(self.model, context)
                 relevant_context_vector += idf * context_rep
             else:
-                print('No idf score for relevant word {}'.format(context))
+                self.missing_idf[context] = 'relevant word'
 
         for context in reference_contexts:
             idf = self.idf_scores.get_idf_score(context)
-            if idf:  # TODO: missing idf score
+            if idf:
                 context_rep = get_vector_repr_of_word(self.model, context)
                 reference_context_vector += idf * context_rep
             else:
-                print('No idf score for reference word {}'.format(context))
+                self.missing_idf[context] = 'reference word'
 
         if not relevant_context_vector.any() or not reference_context_vector.any():
             return None
@@ -79,26 +82,32 @@ class DependencyCosSimScorer:
         return cos_sim
 
     def score_group(self, users_scores, users):
-        avgs = []
+        avgs_nouns = []
+        avgs_verbs = []
 
         for user in users:
-            avg = self.score_user(user, users_scores)
-            avgs += [avg]
-        return np.mean(avgs)
+            avg_nouns, avg_verbs = self.score_user(user, users_scores)
+            avgs_nouns += [avg_nouns]
+            avgs_verbs += [avg_verbs]
+        avgs_nouns = np.mean([avg for avg in avgs_nouns if not np.isnan(avg)])
+        avgs_verbs = np.mean([avg for avg in avgs_verbs if not np.isnan(avg)])
+        return avgs_nouns, avgs_verbs
 
     @staticmethod
     def score_user(user, users_scores):
-        score_per_answer = users_scores[user]
-        score_per_answer = [s for s in score_per_answer.values()]
-        flat_scores = [item for sublist in score_per_answer for item in sublist]
-        avg = np.mean(flat_scores)
-        return avg
+        score_per_answer = users_scores[user]  # get scores for this user
+        score_per_answer = [s for s in score_per_answer.values()]  # list of scores for each answer
+        flat_nouns_scores = [item for sublist in score_per_answer for item in sublist[0]]
+        flat_verbs_scores = [item for sublist in score_per_answer for item in sublist[1]]
+        avg_nouns = np.mean(flat_nouns_scores)
+        avg_verbs = np.mean(flat_verbs_scores)
+        return avg_nouns, avg_verbs
 
     def cos_sim_for_tag(self, word, pos_tag, group):
         if word not in self.reference_tags[pos_tag] or word not in self.relevant_tags[group][pos_tag]:
-            missing_tag = 'relevant set' if word not in self.relevant_tags[group][pos_tag] else 'reference set'
-            print('Skipping tag {} not found in {}'.format(word, missing_tag))
-            return None  # TODO: why no tags?
+            if word not in self.reference_tags[pos_tag]:
+                self.missing_words[word] = 'reference set'
+            return None
 
         relevant_context = self.relevant_tags[group][pos_tag][word]
         reference_context = self.reference_tags[pos_tag][word]
@@ -111,7 +120,8 @@ class DependencyCosSimScorer:
 
         for answer_num, users_pos_data in sorted(self.answers_to_user_id_pos_data.items()):
             pos_data = users_pos_data[user]
-            ans_scores = []
+            ans_noun_scores = []
+            ans_verb_scores = []
 
             if not pos_data['lemmas']:
                 continue
@@ -121,10 +131,12 @@ class DependencyCosSimScorer:
             for word, pos_tag in zip(words, pos_tags):
                 if pos_tag == 'noun' or pos_tag == 'verb':
                     score = self.cos_sim_for_tag(word, pos_tag, group)
-                    if score:
-                        ans_scores += [score]
+                    if score and pos_tag == 'noun':
+                        ans_noun_scores += [score]
+                    elif score and pos_tag == 'verb':
+                        ans_verb_scores += [score]
 
-            scores[answer_num] = ans_scores
+            scores[answer_num] = (ans_noun_scores, ans_verb_scores)
         return scores
 
 
@@ -147,8 +159,11 @@ def main():
     control_scores = dep_scorer.score_group(users_scores, control[0])
     patients_scores = dep_scorer.score_group(users_scores, patients[0])
 
-    print("Control group scores: {}".format(control_scores))
-    print("Patients group scores: {}".format(patients_scores))
+    print("Control group scores: nouns: {}, verbs: {}".format(*control_scores))
+    print("Patients group scores: nouns: {}, verbs: {}".format(*patients_scores))
+
+    print('No idf scores for words {}\n'.format(dep_scorer.missing_idf))
+    print('Words missing from sets {}\n'.format(dep_scorer.missing_words))
 
 
 if __name__ == '__main__':
