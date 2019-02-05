@@ -241,45 +241,52 @@ def classify_per_question(data, y, tests, debug):
 
 
 def classify_question_types(data, y, tests, debug):
+    answer_ranges = [('([1-9]|1[0-4])', '1-14'), ('(1[5-8])', '15-18')]
     results = []
 
     for test, test_name in tqdm(tests, file=sys.stdout, total=len(tests)):
-        test_results = TestResults(test_name, len(test), [])
-        answer_ranges = [('([1-9]|1[0-4])', '1-14'), ('(1[5-8])', '15-18')]
+        results_types = {
+            '1-14': TestResults(test_name, len(test), []),
+            '15-18': TestResults(test_name, len(test), [])
+        }
 
         for regex, ans_range in answer_ranges:
             X = get_features(data, test, regex)
+            results_types[ans_range].num_features = len(X.columns)
             answer_results = AnswersResults(ans_range, [])
             result_records = get_classifiers_results_records(X, y, test_name + ' q{}'.format(ans_range), debug)
 
             for record in result_records:
                 answer_results.results_list.append(record)
 
-            test_results.results_list.append(answer_results)
-        results += [test_results]
+            results_types[ans_range].results_list.append(answer_results)
+        results += [results_types]
 
-    dfs_res = []
     headers = ['Acc. q{}', 'Prec. q{}', 'Recall q{}', 'F q{}']
-    features_list = []
 
-    for result in results:
-        df_tests = []
+    for _, ans_range in answer_ranges:
+        dfs_res = []
+        features_list = []
 
-        # iterate classifier names, all answer_ranges use the same classifiers. choose 0
-        for cls in result.results_list[0].results_list:
-            feat_head = '{} ({}) {}'.format(result.tested_features, result.num_features, cls.classifier_name)
-            features_list.append(feat_head)
+        for result in results:
+            results_types = result[ans_range]
+            df_tests = []
+            # iterate classifier names, all answer_ranges use the same classifiers. choose 0
+            for cls in results_types.results_list[0].results_list:
+                feat_head = '{} ({}) {}'.format(results_types.tested_features,
+                                                results_types.num_features,
+                                                cls.classifier_name)
+                features_list.append(feat_head)
 
-        for item in result.results_list:
-            ans_headers = [head.format(item.answer_number) for head in headers]
-            df_test = pd.DataFrame([(i.accuracy, i.precision, i.recall, i.f1)
-                                   for i in item.results_list],
-                                   columns=ans_headers)
-            df_tests += [df_test]
+            for item in results_types.results_list:
+                ans_headers = [head.format(item.answer_number) for head in headers]
+                df_test = pd.DataFrame([(i.accuracy, i.precision, i.recall, i.f1) for i in item.results_list],
+                                       columns=ans_headers)
+                df_tests += [df_test]
 
-        df_tests = pd.concat(df_tests, axis=1)
-        dfs_res += [df_tests]
+            df_tests = pd.concat(df_tests, axis=1)
+            dfs_res += [df_tests]
 
-    dfs_res = pd.concat(dfs_res, axis=0)
-    dfs_res.insert(0, 'Features (#features)', features_list)
-    dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_answer_type.csv"), index=False)
+        dfs_res = pd.concat(dfs_res, axis=0)
+        dfs_res.insert(0, 'Features (#features)', features_list)
+        dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_answers_{}.csv".format(ans_range)), index=False)
