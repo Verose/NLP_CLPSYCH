@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 from gensim.models import FastText
+from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
 from utils import remove_females, remove_depressed, DATA_DIR, OUTPUT_DIR
@@ -157,6 +158,12 @@ class DependencyCosSimScorer:
 
         dfs = pd.concat(dfs, axis=0)
         dfs.to_csv(os.path.join(OUTPUT_DIR, "dependency_scores_{}.csv".format(group_name)), index=False)
+        return dfs
+
+    @staticmethod
+    def ttest_user_scores(control_users_scores, patients_users_scores):
+        ttest = stats.ttest_ind(control_users_scores, patients_users_scores)
+        return ttest
 
 
 def main():
@@ -177,14 +184,18 @@ def main():
 
     avgs_nouns, avgs_verbs = dep_scorer.all_users_scores(control[0], users_scores)
     control_scores = dep_scorer.score_group(avgs_nouns, avgs_verbs)
-    dep_scorer.save_per_user_scores(avgs_nouns, avgs_verbs, control[1])
+    control_users_scores = dep_scorer.save_per_user_scores(avgs_nouns, avgs_verbs, control[1])
     print("Control group scores: nouns: {}, verbs: {}".format(*control_scores))
 
     avgs_nouns, avgs_verbs = dep_scorer.all_users_scores(patients[0], users_scores)
     patients_scores = dep_scorer.score_group(avgs_nouns, avgs_verbs)
-    dep_scorer.save_per_user_scores(avgs_nouns, avgs_verbs, patients[1])
+    patients_users_scores = dep_scorer.save_per_user_scores(avgs_nouns, avgs_verbs, patients[1])
     print("Patients group scores: nouns: {}, verbs: {}".format(*patients_scores))
 
+    ttest_results = dep_scorer.ttest_user_scores(control_users_scores, patients_users_scores)
+    print('T-Test results:')
+    print('nouns: p-value: {}, t-statistic: {}'.format(ttest_results[0][0], ttest_results[1][0]))
+    print('verb: p-value: {}, t-statistic: {}'.format(ttest_results[0][1], ttest_results[1][1]))
     print('No idf scores for words {}\n'.format(dep_scorer.missing_idf))
     print('Words missing from sets {}\n'.format(dep_scorer.missing_words))
 
