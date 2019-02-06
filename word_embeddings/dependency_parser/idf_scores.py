@@ -22,9 +22,7 @@ class IdfScores:
 
         # normalize idf vector
         scaler = MinMaxScaler()
-        # TODO: should scale so it sums to 1?
         self._idf = scaler.fit_transform(self._v.idf_.reshape(-1, 1)).squeeze()
-        # self._idf = self._v.idf_/self._v.idf_.sum(axis=0, keepdims=1)
 
     def get_idf_score(self, word):
         return self._idf[self._v.vocabulary_[word]] if word in self._v.vocabulary_ else None

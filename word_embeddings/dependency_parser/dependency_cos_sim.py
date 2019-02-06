@@ -1,4 +1,3 @@
-import glob
 import os
 
 import numpy as np
@@ -49,11 +48,16 @@ class DependencyCosSimScorer:
 
     @staticmethod
     def get_documents():
+        datasets = ['doctors_articles', '2b_healthy_articles', 'infomed_qa', 'haaretz_articles']
         files_grabbed = []
-        data_dir = os.path.join('..', 'data')
-        for pattern in ['doctors_articles', '2b_healthy_articles', 'infomed_qa']:
-            pattern = os.path.join(data_dir, pattern, '*.txt')
-            files_grabbed.extend(glob.glob(pattern))
+        root_dir = DATA_DIR
+
+        for dir_name, _, file_list in os.walk(root_dir):
+            if not any(dataset in dir_name for dataset in datasets):
+                continue
+            for file_name in file_list:
+                full_path = os.path.join(dir_name, file_name)
+                files_grabbed.append(full_path)
         return files_grabbed
 
     @staticmethod
@@ -161,7 +165,7 @@ class DependencyCosSimScorer:
         return dfs
 
     @staticmethod
-    def ttest_user_scores(control_users_scores, patients_users_scores):
+    def ttest_group_scores(control_users_scores, patients_users_scores):
         ttest = stats.ttest_ind(control_users_scores, patients_users_scores)
         return ttest
 
@@ -192,10 +196,12 @@ def main():
     patients_users_scores = dep_scorer.save_per_user_scores(avgs_nouns, avgs_verbs, patients[1])
     print("Patients group scores: nouns: {}, verbs: {}".format(*patients_scores))
 
-    ttest_results = dep_scorer.ttest_user_scores(control_users_scores, patients_users_scores)
+    ttest_results = dep_scorer.ttest_group_scores(control_users_scores, patients_users_scores)
+    pvalues = ttest_results.pvalue
+    tstatistics = ttest_results.statistic
     print('T-Test results:')
-    print('nouns: p-value: {}, t-statistic: {}'.format(ttest_results[0][0], ttest_results[1][0]))
-    print('verb: p-value: {}, t-statistic: {}'.format(ttest_results[0][1], ttest_results[1][1]))
+    print('nouns: p-value: {}, t-statistic: {}'.format(pvalues[0], tstatistics[0]))
+    print('verbs: p-value: {}, t-statistic: {}'.format(pvalues[1], tstatistics[1]))
     print('No idf scores for words {}\n'.format(dep_scorer.missing_idf))
     print('Words missing from sets {}\n'.format(dep_scorer.missing_words))
 
