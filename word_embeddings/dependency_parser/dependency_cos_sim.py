@@ -110,8 +110,8 @@ class DependencyCosSimScorer:
         return scores
 
     def cos_sim_for_tag(self, word, pos_tag, group):
-        if word not in self._reference_tags[pos_tag] or word not in self._relevant_tags[group][pos_tag]:
-            if word not in self._reference_tags[pos_tag]:
+        if word not in self._relevant_tags[group][pos_tag] or word not in self._reference_tags[pos_tag]:
+            if word in self._relevant_tags[group][pos_tag] and word not in self._reference_tags[pos_tag]:
                 self.missing_words[word] = 'reference set'
             return None
 
