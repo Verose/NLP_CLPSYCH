@@ -44,8 +44,8 @@ def reference():
             for file_name in file_list:
                 full_path = os.path.join(dir_name, file_name)
 
-                # skip already generated normalized files
-                if not file_name.startswith('reference_set_'):
+                # only take reference files with the requested pos tag
+                if not (file_name.startswith('reference_set_') and pos_tag_to_test in file_name):
                     continue
 
                 with open(full_path, encoding='utf-8') as f:
