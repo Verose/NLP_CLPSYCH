@@ -109,6 +109,7 @@ def get_dependency_tree_for_sentence(sent, i, dataset=None):
 
         dep = dep.split('\t')
         num = dep[0]
+        lemma = dep[2]
         word = dep[1]
         tag = dep[3]
         head = dep[6]
@@ -116,6 +117,7 @@ def get_dependency_tree_for_sentence(sent, i, dataset=None):
 
         dep_dict[num] = {
             "word": word,
+            "lemma": lemma,
             "tag": tag,
             "next": head,
             "dep": dependency
@@ -185,9 +187,9 @@ def get_relevant_set(data, i):
                         continue
 
                     curr_tag = dependency['tag']
-                    curr_word = dependency['word']
+                    curr_word = dependency['lemma']
                     next_tag = dep_tree[dependency['next']]['tag']
-                    next_word = dep_tree[dependency['next']]['word']
+                    next_word = dep_tree[dependency['next']]['lemma']
 
                     if curr_tag in adjective_tags and next_tag in noun_tags:
                         relevant_set_nouns[next_word].append(curr_word)
