@@ -20,6 +20,7 @@ LOGGER.addHandler(file_handler)
 
 
 def average_cosine_similarity_several_window_sizes(window_sizes):
+    pos_tags = ''
     win_tests = []
     win_cossim = []
     gs_window = []
@@ -93,14 +94,16 @@ if __name__ == '__main__':
     model = FastText.load_fasttext_format(os.path.join(DATA_DIR, 'ft_pretrained', 'wiki.he.bin'))
 
     if conf['output']['grid_search'] and conf['mode'] == 'pos':
-        pos_tags_list = ['noun', 'verb', 'adjective', 'adverb', 'noun verb adverb adjective', 'verb adverb']
-        pos_tags_win_sizes = [conf['output']['grid_search_count']] * len(pos_tags_list)
+        # pos_tags_list = ['noun', 'verb', 'adjective', 'adverb', 'noun verb adverb adjective', 'verb adverb']
+        pos_tags_list = conf['pos_tags']
+        grid_search_count = conf['output']['grid_search_count']
+        pos_tags_win_sizes = range(1, grid_search_count+1)
         grid_search = []
 
-        for pos_tags in pos_tags_list:
-            conf['pos_tags'] = [pos_tags]
+        for pos_tag in pos_tags_list:
+            conf['pos_tags'] = [pos_tag] * grid_search_count
             grid_search_window = average_cosine_similarity_several_window_sizes(pos_tags_win_sizes)
-            grid_search.append((pos_tags, grid_search_window))
+            grid_search.append((pos_tag, grid_search_window))
 
         plot_grid_search(grid_search, OUTPUT_DIR)
     else:
