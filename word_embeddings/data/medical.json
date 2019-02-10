@@ -1,15 +1,15 @@
 {
   "window_size": [
-    4, 3, 1
+    4, 3, 1, 4, 4
   ],
   "mode": "pos",
   "pos_tags": [
-    "noun verb adverb adjective", "verb", "adjective"
+    "noun verb adverb adjective", "verb", "adjective", "noun", "adverb"
   ],
   "window_method": "surrounding",
   "output": {
     "plot": false,
     "grid_search": false,
-    "grid_search_count": 2
+    "grid_search_count": 4
   }
 }
