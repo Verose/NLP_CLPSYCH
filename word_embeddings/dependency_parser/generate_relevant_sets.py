@@ -21,19 +21,20 @@ punctuation = string.punctuation.replace('-', '')
 
 
 def get_response(headers, data):
-    timeout = 300
+    timeout = 5
     retry_counter = 1
 
     while True:
         try:
-            # response = requests.post('http://onlp.openu.org.il:8000/yap/heb/joint', headers=headers, data=data)
             response = requests.post('http://localhost:8000/yap/heb/joint', headers=headers, data=data, timeout=timeout)
             return response
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            if retry_counter > 10:
-                print('\nFailed to get a response after 10 retries and timeout {}s. Exiting...'.format(timeout))
-                return None
-            sleep(5)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            print('Failed to get response from server. Exception: \n{}'.format(e))
+        if retry_counter > 5:
+            print('\nFailed after 5 retries of timeout {}s. Exiting...'.format(timeout))
+            return None
+        sleep(5)
+        retry_counter += 1
 
 
 def get_dependency_tree_for_sentence(sent):
@@ -52,6 +53,7 @@ def get_dependency_tree_for_sentence(sent):
 
     response = get_response(headers, data)
     if not response:
+        print('Error occurred with sentence {}'.format(sent))
         return None
     tree = json.loads(response.text)
     dep_tree = tree['dep_tree'].split('\n')
@@ -105,6 +107,7 @@ def read_reference_set(pos_tag):
 def repair_document(sentence):
     # no need for newline (solves problem with newline in the middle of a sentence)
     sentence = sentence.replace('\n', ' ')
+    sentence = sentence.replace('\t', ' ')
 
     # wrongly placed quotation marks
     sentence = sentence.replace('."', '".')
@@ -146,6 +149,10 @@ def get_relevant_set(data):
     patients_nouns, patients_verbs = defaultdict(list), defaultdict(list)
 
     for i, row in tqdm(data.iterrows(), file=sys.stdout, total=len(data), desc='All Users'):
+        if i and i % 10 == 0:
+            save_sets(control_nouns, control_verbs, 'control_relevant_set_{{}}_{}.json'.format(i))
+            save_sets(patients_nouns, patients_verbs, 'patients_relevant_set_{{}}_{}.json'.format(i))
+
         is_control = row['label'] == 'control'
         row = row[2:]
         for ans in tqdm(row, file=sys.stdout, total=len(row), leave=False, desc='Questions'):
@@ -200,6 +207,9 @@ def get_reference_set(data, dataset):
     reference_set_verbs = defaultdict(list)
 
     for i, article in tqdm(enumerate(data), file=sys.stdout, total=len(data), desc='Articles'):
+        if i and i % 10 == 0:
+            save_sets(reference_set_nouns, reference_set_verbs, 'reference_set_{{}}_{}_{}.json'.format(dataset, i))
+
         with open(article, encoding='utf-8') as f:
             if 'haaretz' in dataset:
                 article = f.read()
