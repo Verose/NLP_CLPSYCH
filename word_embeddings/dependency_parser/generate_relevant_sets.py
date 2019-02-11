@@ -232,9 +232,9 @@ def get_reference_set(data, i, dataset):
                     continue
 
                 curr_tag = dependency['tag']
-                curr_word = dependency['word']
+                curr_word = dependency['lemma']
                 next_tag = dep_tree[dependency['next']]['tag']
-                next_word = dep_tree[dependency['next']]['word']
+                next_word = dep_tree[dependency['next']]['lemma']
 
                 relevant_noun = next_word in control_nouns or next_word in patients_nouns
                 relevant_verb = next_word in control_verbs or next_word in patients_verbs
