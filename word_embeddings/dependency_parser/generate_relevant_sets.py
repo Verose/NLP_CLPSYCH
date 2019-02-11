@@ -37,6 +37,11 @@ def get_response(headers, data):
 
 
 def get_dependency_tree_for_sentence(sent):
+    sent = sent.translate(str.maketrans("", "", punctuation))
+
+    while '  ' in sent:  # fix sentences
+        sent = sent.replace('  ', ' ')
+
     headers = {
         'Content-Type': 'application/json',
     }
@@ -237,6 +242,7 @@ if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option('--set_type', action="store", choices=['relevant', 'reference'])
     parser.add_option('--folder', action="store", default="doctors_articles")
+    parser.add_option('--slice', action="store", type="int", default=0, help="iteration to slice from")
     options, remainder = parser.parse_args()
 
     if not os.path.exists(os.path.join(OUTPUTS_DIR, 'tmp')):
@@ -244,10 +250,13 @@ if __name__ == '__main__':
 
     if options.set_type == 'relevant':
         df = pd.read_csv(os.path.join(DATA_DIR, 'all_data.csv'))
+        df = df[options.slice:]
+
         get_relevant_set(df)
     elif options.set_type == 'reference':
         articles_path = os.path.join(DATA_DIR, options.folder)
         articles = os.listdir(articles_path)
         articles = [os.path.join(articles_path, article) for article in articles]
+        articles = articles[options.slice:]
 
         get_reference_set(articles, options.folder)
