@@ -21,20 +21,19 @@ punctuation = string.punctuation.replace('-', '')
 
 
 def get_response(headers, data):
-    retry_timer = 1
+    timeout = 300
+    retry_counter = 1
 
     while True:
         try:
             # response = requests.post('http://onlp.openu.org.il:8000/yap/heb/joint', headers=headers, data=data)
-            response = requests.post('http://localhost:8000/yap/heb/joint', headers=headers, data=data)
+            response = requests.post('http://localhost:8000/yap/heb/joint', headers=headers, data=data, timeout=timeout)
             return response
-        except requests.exceptions.ConnectionError:
-            if retry_timer > 1000:
-                print('\nMore than 1000 seconds without getting a response! Exiting...')
-                exit(0)
-
-            sleep(retry_timer)
-            retry_timer *= 2
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            if retry_counter > 10:
+                print('\nFailed to get a response after 10 retries and timeout {}s. Exiting...'.format(timeout))
+                return None
+            sleep(5)
 
 
 def get_dependency_tree_for_sentence(sent):
@@ -47,6 +46,8 @@ def get_dependency_tree_for_sentence(sent):
     data = json.dumps(data)
 
     response = get_response(headers, data)
+    if not response:
+        return None
     tree = json.loads(response.text)
     dep_tree = tree['dep_tree'].split('\n')
     dep_dict = {}
@@ -73,6 +74,13 @@ def get_dependency_tree_for_sentence(sent):
         }
 
     return dep_dict
+
+
+def save_sets(nouns_set, verbs_set, file_pattern):
+    with open(os.path.join(OUTPUTS_DIR, file_pattern.format('nouns')), 'w', encoding='utf-8') as out_file:
+        json.dump(nouns_set, out_file, ensure_ascii=False)
+    with open(os.path.join(OUTPUTS_DIR, file_pattern.format('verbs')), 'w', encoding='utf-8') as out_file:
+        json.dump(verbs_set, out_file, ensure_ascii=False)
 
 
 def read_relevant_set(pos_tag, group):
@@ -129,10 +137,12 @@ def repair_document(sentence):
 
 
 def get_relevant_set(data):
-    relevant_set_nouns = defaultdict(list)
-    relevant_set_verbs = defaultdict(list)
+    control_nouns, control_verbs = defaultdict(list), defaultdict(list)
+    patients_nouns, patients_verbs = defaultdict(list), defaultdict(list)
 
-    for _, row in tqdm(data.iterrows(), file=sys.stdout, total=len(data), desc='All Users'):
+    for i, row in tqdm(data.iterrows(), file=sys.stdout, total=len(data), desc='All Users'):
+        is_control = row['label'] == 'control'
+        row = row[2:]
         for ans in tqdm(row, file=sys.stdout, total=len(row), leave=False, desc='Questions'):
             if not ans or ans is pd.np.nan:  # some users didn't answer all of the questions
                 continue
@@ -144,6 +154,11 @@ def get_relevant_set(data):
                     continue
 
                 dep_tree = get_dependency_tree_for_sentence(sentence)
+                if not dep_tree:
+                    print('Saving current results and exiting...')
+                    save_sets(control_nouns, control_verbs, 'control_relevant_set_{{}}_{}.json'.format(i))
+                    save_sets(patients_nouns, patients_verbs, 'patients_relevant_set_{{}}_{}.json'.format(i))
+                    exit(0)
 
                 for dependency in dep_tree.values():
                     if dependency['next'] == '0':
@@ -155,14 +170,18 @@ def get_relevant_set(data):
                     next_word = dep_tree[dependency['next']]['lemma']
 
                     if curr_tag in adjective_tags and next_tag in noun_tags:
-                        relevant_set_nouns[next_word].append(curr_word)
+                        if is_control:
+                            control_nouns[next_word].append(curr_word)
+                        else:
+                            patients_nouns[next_word].append(curr_word)
                     elif curr_tag in adverb_tags and next_tag in verb_tags:
-                        relevant_set_verbs[next_word].append(curr_word)
+                        if is_control:
+                            control_verbs[next_word].append(curr_word)
+                        else:
+                            patients_verbs[next_word].append(curr_word)
 
-    with open(os.path.join(OUTPUTS_DIR, 'relevant_set_nouns.json'), 'w', encoding='utf-8') as out_file:
-        json.dump(relevant_set_nouns, out_file, ensure_ascii=False)
-    with open(os.path.join(OUTPUTS_DIR, 'relevant_set_verbs.json'), 'w', encoding='utf-8') as out_file:
-        json.dump(relevant_set_verbs, out_file, ensure_ascii=False)
+    save_sets(control_nouns, control_verbs, 'control_norm_relevant_set_{}.json')
+    save_sets(patients_nouns, patients_verbs, 'patients_norm_relevant_set_{}.json')
 
 
 def get_reference_set(data, dataset):
@@ -175,7 +194,7 @@ def get_reference_set(data, dataset):
     reference_set_nouns = defaultdict(list)
     reference_set_verbs = defaultdict(list)
 
-    for article in tqdm(data, file=sys.stdout, total=len(data), desc='Articles'):
+    for i, article in tqdm(enumerate(data), file=sys.stdout, total=len(data), desc='Articles'):
         with open(article, encoding='utf-8') as f:
             if 'haaretz' in dataset:
                 article = f.read()
@@ -189,6 +208,10 @@ def get_reference_set(data, dataset):
 
             sentence = repair_document(sentence)
             dep_tree = get_dependency_tree_for_sentence(sentence)
+            if not dep_tree:
+                print('Saving current results and exiting...')
+                save_sets(reference_set_nouns, reference_set_verbs, 'reference_set_{{}}_{}_{}.json'.format(dataset, i))
+                exit(0)
 
             for dependency in dep_tree.values():
                 if dependency['next'] == '0':
@@ -207,22 +230,10 @@ def get_reference_set(data, dataset):
                 elif curr_tag in adverb_tags and next_tag in verb_tags and relevant_verb:
                     reference_set_verbs[next_word].append(curr_word)
 
-    with open(
-            os.path.join(OUTPUTS_DIR, 'reference_set_nouns_{}.json'.format(dataset)),
-            'w',
-            encoding='utf-8'
-    ) as out_file:
-        json.dump(reference_set_nouns, out_file, ensure_ascii=False)
-    with open(
-            os.path.join(OUTPUTS_DIR, 'reference_set_verbs_{}.json'.format(dataset)),
-            'w',
-            encoding='utf-8'
-    ) as out_file:
-        json.dump(reference_set_verbs, out_file, ensure_ascii=False)
+    save_sets(reference_set_nouns, reference_set_verbs, 'norm_reference_set_{{}}_{}.json'.format(dataset))
 
 
 if __name__ == '__main__':
-    # slice data[i*(len//k):(i+1)*(len//k)]
     parser = optparse.OptionParser()
     parser.add_option('--set_type', action="store", choices=['relevant', 'reference'])
     parser.add_option('--folder', action="store", default="doctors_articles")
@@ -233,8 +244,6 @@ if __name__ == '__main__':
 
     if options.set_type == 'relevant':
         df = pd.read_csv(os.path.join(DATA_DIR, 'all_data.csv'))
-        df = df.iloc[:, 2:]  # ignore first 2 columns
-
         get_relevant_set(df)
     elif options.set_type == 'reference':
         articles_path = os.path.join(DATA_DIR, options.folder)
