@@ -25,7 +25,7 @@ def relevant():
 
             for pos, tag_list in relevant_dict.items():
                 # take 10 most occurring items
-                most_occurrences = Counter(tag_list).most_common()[:10]
+                most_occurrences = Counter(tag_list).most_common()[:15]
                 tag_list = [item[0] for item in most_occurrences]
                 relevant_set[pos] = tag_list
 
