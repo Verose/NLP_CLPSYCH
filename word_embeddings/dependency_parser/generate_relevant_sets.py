@@ -21,7 +21,7 @@ punctuation = string.punctuation.replace('-', '')
 
 
 def get_response(headers, data):
-    timeout = 5
+    timeout = 10
     retry_counter = 1
 
     while True:
@@ -53,7 +53,6 @@ def get_dependency_tree_for_sentence(sent):
 
     response = get_response(headers, data)
     if not response:
-        print('Error occurred with sentence {}'.format(sent))
         return None
     tree = json.loads(response.text)
     dep_tree = tree['dep_tree'].split('\n')
@@ -144,14 +143,15 @@ def repair_document(sentence):
     return sentence
 
 
-def get_relevant_set(data):
+def get_relevant_set(data, start_ind):
     control_nouns, control_verbs = defaultdict(list), defaultdict(list)
     patients_nouns, patients_verbs = defaultdict(list), defaultdict(list)
 
     for i, row in tqdm(data.iterrows(), file=sys.stdout, total=len(data), desc='All Users'):
         if i and i % 10 == 0:
-            save_sets(control_nouns, control_verbs, 'control_relevant_set_{{}}_{}.json'.format(i))
-            save_sets(patients_nouns, patients_verbs, 'patients_relevant_set_{{}}_{}.json'.format(i))
+            ind = i + start_ind
+            save_sets(control_nouns, control_verbs, 'control_relevant_set_{{}}_{}.json'.format(ind))
+            save_sets(patients_nouns, patients_verbs, 'patients_relevant_set_{{}}_{}.json'.format(ind))
 
         is_control = row['label'] == 'control'
         row = row[2:]
@@ -168,8 +168,9 @@ def get_relevant_set(data):
                 dep_tree = get_dependency_tree_for_sentence(sentence)
                 if not dep_tree:
                     print('Saving current results and exiting...')
-                    save_sets(control_nouns, control_verbs, 'control_relevant_set_{{}}_{}.json'.format(i))
-                    save_sets(patients_nouns, patients_verbs, 'patients_relevant_set_{{}}_{}.json'.format(i))
+                    ind = i + start_ind
+                    save_sets(control_nouns, control_verbs, 'control_relevant_set_{{}}_{}.json'.format(ind))
+                    save_sets(patients_nouns, patients_verbs, 'patients_relevant_set_{{}}_{}.json'.format(ind))
                     exit(0)
 
                 for dependency in dep_tree.values():
@@ -196,7 +197,7 @@ def get_relevant_set(data):
     save_sets(patients_nouns, patients_verbs, 'patients_norm_relevant_set_{}.json')
 
 
-def get_reference_set(data, dataset):
+def get_reference_set(data, start_ind, dataset):
     dataset = dataset.replace('/', '_') if dataset else None  # support nested folders
     control_nouns = read_relevant_set('nouns', 'control')
     control_verbs = read_relevant_set('verbs', 'control')
@@ -208,7 +209,8 @@ def get_reference_set(data, dataset):
 
     for i, article in tqdm(enumerate(data), file=sys.stdout, total=len(data), desc='Articles'):
         if i and i % 10 == 0:
-            save_sets(reference_set_nouns, reference_set_verbs, 'reference_set_{{}}_{}_{}.json'.format(dataset, i))
+            ind = i + start_ind
+            save_sets(reference_set_nouns, reference_set_verbs, 'reference_set_{{}}_{}_{}.json'.format(dataset, ind))
 
         with open(article, encoding='utf-8') as f:
             if 'haaretz' in dataset:
@@ -224,8 +226,10 @@ def get_reference_set(data, dataset):
             sentence = repair_document(sentence)
             dep_tree = get_dependency_tree_for_sentence(sentence)
             if not dep_tree:
+                ind = i + start_ind
                 print('Saving current results and exiting...')
-                save_sets(reference_set_nouns, reference_set_verbs, 'reference_set_{{}}_{}_{}.json'.format(dataset, i))
+                save_sets(reference_set_nouns, reference_set_verbs,
+                          'reference_set_{{}}_{}_{}.json'.format(dataset, ind))
                 exit(0)
 
             for dependency in dep_tree.values():
@@ -262,11 +266,11 @@ if __name__ == '__main__':
         df = pd.read_csv(os.path.join(DATA_DIR, 'all_data.csv'))
         df = df[options.slice:]
 
-        get_relevant_set(df)
+        get_relevant_set(df, options.slice)
     elif options.set_type == 'reference':
         articles_path = os.path.join(DATA_DIR, options.folder)
         articles = os.listdir(articles_path)
         articles = [os.path.join(articles_path, article) for article in articles]
         articles = articles[options.slice:]
 
-        get_reference_set(articles, options.folder)
+        get_reference_set(articles, options.slice, options.folder)
