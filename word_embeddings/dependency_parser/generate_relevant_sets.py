@@ -89,6 +89,22 @@ def save_sets(nouns_set, verbs_set, file_pattern):
         json.dump(verbs_set, out_file, ensure_ascii=False)
 
 
+def load_sets(file_pattern):
+    nouns_set = defaultdict(list)
+    verbs_set = defaultdict(list)
+
+    nouns_pattern = os.path.join(OUTPUTS_DIR, file_pattern.format('nouns'))
+    verbs_pattern = os.path.join(OUTPUTS_DIR, file_pattern.format('verbs'))
+
+    if os.path.isfile(nouns_pattern):
+        with open(nouns_pattern, encoding='utf-8') as input_file:
+            nouns_set.update(json.load(input_file))
+    if os.path.isfile(verbs_pattern):
+        with open(verbs_pattern, encoding='utf-8') as input_file:
+            verbs_set.update(json.load(input_file))
+    return nouns_set, verbs_set
+
+
 def read_relevant_set(pos_tag, group):
     with open(os.path.join(DATA_DIR, 'relevant_sets', group, '{}_norm_relevant_set_{}.json'.format(group, pos_tag)),
               encoding='utf-8') as f:
@@ -144,14 +160,15 @@ def repair_document(sentence):
 
 
 def get_relevant_set(data, start_ind):
-    control_nouns, control_verbs = defaultdict(list), defaultdict(list)
-    patients_nouns, patients_verbs = defaultdict(list), defaultdict(list)
+    control_pattern = 'control_relevant_set_{{}}_{}.json'
+    patients_pattern = 'patients_relevant_set_{{}}_{}.json'
+    control_nouns, control_verbs = load_sets(control_pattern.format(start_ind))
+    patients_nouns, patients_verbs = load_sets(patients_pattern.format(start_ind))
 
     for i, row in tqdm(data.iterrows(), file=sys.stdout, total=len(data), desc='All Users'):
-        if i and i % 10 == 0:
-            ind = i + start_ind
-            save_sets(control_nouns, control_verbs, 'control_relevant_set_{{}}_{}.json'.format(ind))
-            save_sets(patients_nouns, patients_verbs, 'patients_relevant_set_{{}}_{}.json'.format(ind))
+        if i and i % 20 == 0:
+            save_sets(control_nouns, control_verbs, control_pattern.format(i))
+            save_sets(patients_nouns, patients_verbs, patients_pattern.format(i))
 
         is_control = row['label'] == 'control'
         row = row[2:]
@@ -169,8 +186,8 @@ def get_relevant_set(data, start_ind):
                 if not dep_tree:
                     print('Saving current results and exiting...')
                     ind = i + start_ind
-                    save_sets(control_nouns, control_verbs, 'control_relevant_set_{{}}_{}.json'.format(ind))
-                    save_sets(patients_nouns, patients_verbs, 'patients_relevant_set_{{}}_{}.json'.format(ind))
+                    save_sets(control_nouns, control_verbs, control_pattern.format(ind))
+                    save_sets(patients_nouns, patients_verbs, patients_pattern.format(ind))
                     exit(0)
 
                 for dependency in dep_tree.values():
@@ -198,19 +215,18 @@ def get_relevant_set(data, start_ind):
 
 
 def get_reference_set(data, start_ind, dataset):
+    reference_pattern = 'reference_set_{{}}_{}_{}.json'
     dataset = dataset.replace('/', '_') if dataset else None  # support nested folders
     control_nouns = read_relevant_set('nouns', 'control')
     control_verbs = read_relevant_set('verbs', 'control')
     patients_nouns = read_relevant_set('nouns', 'patients')
     patients_verbs = read_relevant_set('verbs', 'patients')
-
-    reference_set_nouns = defaultdict(list)
-    reference_set_verbs = defaultdict(list)
+    reference_set_nouns, reference_set_verbs = load_sets(reference_pattern.format(dataset, start_ind))
 
     for i, article in tqdm(enumerate(data), file=sys.stdout, total=len(data), desc='Articles'):
-        if i and i % 10 == 0:
+        if i and i % 20 == 0:
             ind = i + start_ind
-            save_sets(reference_set_nouns, reference_set_verbs, 'reference_set_{{}}_{}_{}.json'.format(dataset, ind))
+            save_sets(reference_set_nouns, reference_set_verbs, reference_pattern.format(dataset, ind))
 
         with open(article, encoding='utf-8') as f:
             if 'haaretz' in dataset:
@@ -229,7 +245,7 @@ def get_reference_set(data, start_ind, dataset):
                 ind = i + start_ind
                 print('Saving current results and exiting...')
                 save_sets(reference_set_nouns, reference_set_verbs,
-                          'reference_set_{{}}_{}_{}.json'.format(dataset, ind))
+                          reference_pattern.format(dataset, ind))
                 exit(0)
 
             for dependency in dep_tree.values():
