@@ -183,6 +183,8 @@ def get_relevant_set(data, start_ind):
                     continue
 
                 dep_tree = get_dependency_tree_for_sentence(sentence)
+                if not bool(dep_tree):
+                    continue  # skipping empty
                 if not dep_tree:
                     print('Saving current results and exiting...')
                     ind = i + start_ind
@@ -232,6 +234,9 @@ def get_reference_set(data, start_ind, dataset):
             if 'haaretz' in dataset:
                 article = f.read()
                 article = article.replace('\n', '').split('.')[:-1]  # last is blank
+            elif 'doctors' in dataset:
+                article = f.readlines()
+                article = article[:-1]  # last is irrelevant
             else:
                 article = f.readlines()
 
