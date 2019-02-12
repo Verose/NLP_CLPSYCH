@@ -246,6 +246,8 @@ def get_reference_set(data, start_ind, dataset):
 
             sentence = repair_document(sentence)
             dep_tree = get_dependency_tree_for_sentence(sentence)
+            if not bool(dep_tree):
+                continue  # skipping empty
             if not dep_tree:
                 ind = i + start_ind
                 print('Saving current results and exiting...')
