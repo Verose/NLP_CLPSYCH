@@ -44,7 +44,7 @@ class DependencyCosSimScorer:
         self._idf_scores.calculate_idf_scores()
 
         self.missing_idf = {}
-        self.missing_words = {}
+        self.missing_words = []
 
     @staticmethod
     def get_documents():
@@ -110,9 +110,10 @@ class DependencyCosSimScorer:
         return scores
 
     def cos_sim_for_tag(self, word, pos_tag, group):
-        if word not in self._relevant_tags[group][pos_tag] or word not in self._reference_tags[pos_tag]:
-            if word in self._relevant_tags[group][pos_tag] and word not in self._reference_tags[pos_tag]:
-                self.missing_words[word] = 'reference set'
+        if word not in self._relevant_tags[group][pos_tag]:
+            return None
+        elif word not in self._reference_tags[pos_tag]:
+            self.missing_words.append(word)
             return None
 
         relevant_context = self._relevant_tags[group][pos_tag][word]
@@ -203,7 +204,7 @@ def main():
     print('nouns: p-value: {}, t-statistic: {}'.format(pvalues[0], tstatistics[0]))
     print('verbs: p-value: {}, t-statistic: {}'.format(pvalues[1], tstatistics[1]))
     print('No idf scores for words {}\n'.format(dep_scorer.missing_idf))
-    print('Words missing from sets {}\n'.format(dep_scorer.missing_words))
+    print('Words missing from sets {}\n'.format(set(dep_scorer.missing_words)))
 
 
 if __name__ == '__main__':
