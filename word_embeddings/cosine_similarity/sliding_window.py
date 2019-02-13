@@ -22,6 +22,8 @@ class SlidingWindow(object):
         self._patient_scores = []
         self._control_users_to_question_scores = {}
         self._patient_users_to_question_scores = {}
+        self._control_users_to_valid_words = {}
+        self._patient_users_to_valid_words = {}
 
     def _setup_logger(self):
         logger = logging.getLogger(self.__class__.__name__)

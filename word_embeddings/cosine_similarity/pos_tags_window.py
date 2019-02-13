@@ -31,18 +31,21 @@ class POSSlidingWindow(SlidingWindow):
             label = row[1]
 
             averages = self._user_avg_scores(user_id)
-            scores, repetitions, items = averages['scores'], averages['repetitions'], averages['items']
+            scores, repetitions, items, words = \
+                averages['scores'], averages['repetitions'], averages['items'], averages['valid_words']
             avg_user_score = sum(scores.values()) / len(scores.values())
             avg_repetitions = sum(repetitions.values()) / len(repetitions.values())
             avg_items = sum(items.values()) / len(items.values())
 
             if label == 'control':
                 self._control_users_to_question_scores[user_id] = scores
+                self._control_users_to_valid_words[user_id] = words
                 self._control_scores += [(avg_user_score, user_id)]
                 self._control_repetitions += [(avg_repetitions, user_id)]
                 self._control_items += [(avg_items, user_id)]
             else:
                 self._patient_users_to_question_scores[user_id] = scores
+                self._patient_users_to_valid_words[user_id] = words
                 self._patient_scores += [(avg_user_score, user_id)]
                 self._patient_repetitions += [(avg_repetitions, user_id)]
                 self._patient_items += [(avg_items, user_id)]
@@ -72,6 +75,7 @@ class POSSlidingWindow(SlidingWindow):
         scores = {}
         repetitions = {}
         items = {}
+        valid_words = {}
 
         # iterate answers
         for answer_num, users_pos_data in sorted(self._answers_to_user_id_pos_data.items()):
@@ -87,6 +91,7 @@ class POSSlidingWindow(SlidingWindow):
             scores[answer_num] = averages['scores']
             repetitions[answer_num] = averages['repetitions']
             items[answer_num] = averages['items']
+            valid_words[answer_num] = averages['valid_words']
 
         # fill in for missing answers
         if skip:
@@ -96,7 +101,7 @@ class POSSlidingWindow(SlidingWindow):
                 repetitions[ans] = 0
                 valid_words[ans] = []
 
-        return {'scores': scores, 'repetitions': repetitions, 'items': items}
+        return {'scores': scores, 'repetitions': repetitions, 'items': items, 'valid_words': valid_words}
 
     def _read_answers_pos_tags(self):
         pos_tags_generator = pos_tags_jsons_generator(self._data_dir)
@@ -128,7 +133,7 @@ class POSSlidingWindow(SlidingWindow):
             valid_pos_tags += [pos_tag]
 
         if not valid_words:
-            return {'scores': 0, 'repetitions': 0, 'items': 0}
+            return {'scores': 0, 'repetitions': 0, 'items': 0, 'valid_words': []}
 
         if self._window_method == 'forward':
             repetitions, scores = self._avg_answer_scores_forward_window(valid_pos_tags, valid_words)
@@ -136,7 +141,8 @@ class POSSlidingWindow(SlidingWindow):
             repetitions, scores = self._avg_answer_scores_surrounding_window(valid_pos_tags, valid_words)
 
         ret_score = sum(scores) / len(scores) if len(scores) > 0 else 0
-        return {'scores': ret_score, 'repetitions': repetitions, 'items': len(valid_words)}
+        return {'scores': ret_score, 'repetitions': repetitions, 'items': len(valid_words),
+                'valid_words': valid_words}
 
     def _avg_answer_scores_forward_window(self, valid_pos_tags, valid_words):
         scores = []

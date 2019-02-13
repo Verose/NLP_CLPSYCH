@@ -1,9 +1,12 @@
 
 class CosSim:
-    def __init__(self, userid, question_num, score):
+    def __init__(self, userid, group, question_num, score, valid_words):
         self.userid = userid
+        self.group = group
         self.question_num = question_num
         self.score = score
+        self.valid_words = valid_words
+        self.n_valid = len(valid_words)
 
     def __repr__(self):
         return self.__str__()
