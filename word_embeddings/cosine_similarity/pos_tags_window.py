@@ -25,7 +25,8 @@ class POSSlidingWindow(SlidingWindow):
 
     def calculate_all_avg_scores(self):
         # iterate users
-        for index, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False):
+        for index, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False,
+                               desc='Users'):
             user_id = row[0]
             label = row[1]
 
@@ -93,6 +94,7 @@ class POSSlidingWindow(SlidingWindow):
             for ans in skip:
                 scores[ans] = mean
                 repetitions[ans] = 0
+                valid_words[ans] = []
 
         return {'scores': scores, 'repetitions': repetitions, 'items': items}
 
@@ -113,6 +115,7 @@ class POSSlidingWindow(SlidingWindow):
         An answer is calculated by summation over all possible windows.
         items - sum of valid words for an answer
         Only considering “content words” - nouns, verbs, adjectives and adverbs
+        'all' considers all possible pos tags.
         :return: dictionary with the required fields
         """
         valid_words = []
@@ -193,12 +196,15 @@ class POSSlidingWindow(SlidingWindow):
     def _should_skip(self, word, pos_tag):
         """
         Should skip specific pos tags (e.g. noun/verb/adverb/adjective), and punctuation marks
+        'all' considers all possible pos tags.
         :param word: str
         :param pos_tag: str
         :return: True/False
         """
-        if pos_tag not in self._pos_tags_to_filter_in:
-            return True
         if word in string.punctuation:
+            return True
+        if pos_tag not in self._pos_tags_to_filter_in:
+            if self._pos_tags_to_filter_in.lower() == 'all':
+                return False
             return True
         return False

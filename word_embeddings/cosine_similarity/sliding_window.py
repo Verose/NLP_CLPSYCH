@@ -49,6 +49,12 @@ class SlidingWindow(object):
         else:
             return self._patient_users_to_question_scores
 
+    def get_user_to_question_valid_words(self, group='control'):
+        if group == 'control':
+            return self._control_users_to_valid_words
+        else:
+            return self._patient_users_to_valid_words
+
     def perform_ttest_on_averages(self):
         """
         Performs t-test on the average cos-sim score of each user

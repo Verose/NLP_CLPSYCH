@@ -1,5 +1,8 @@
 import logging
+import sys
 import warnings
+
+from tqdm import tqdm
 
 from word_embeddings.cosine_similarity.cos_sim_records import WindowCosSim, CosSim
 from word_embeddings.cosine_similarity.cosine_similarity import CosineSimilarity
@@ -25,7 +28,8 @@ def average_cosine_similarity_several_window_sizes(window_sizes):
     win_cossim = []
     gs_window = []
 
-    for i, win_size in enumerate(window_sizes):
+    for i, win_size in tqdm(enumerate(window_sizes), file=sys.stdout, total=len(window_sizes), leave=False,
+                            desc='Window Sizes'):
         if conf['mode'] == 'pos':
             pos_tags = conf['pos_tags'][i]
             header = pos_tags
@@ -56,12 +60,21 @@ def average_cosine_similarity_several_window_sizes(window_sizes):
         win_tests.append(win_test)
 
         control_scores_by_question, patient_scores_by_question = cosine_calcs.get_user_to_question_scores()
-        for userid, scores in control_scores_by_question.items():
-            for qnum, score in scores.items():
-                cossim_test.questions_list.append(CosSim(userid, qnum, score))
-        for userid, scores in patient_scores_by_question.items():
-            for qnum, score in scores.items():
-                cossim_test.questions_list.append(CosSim(userid, qnum, score))
+        control_v_words_by_question, patient_v_words_by_question = cosine_calcs.get_user_to_question_valid_words()
+        for userid in control_scores_by_question.keys():
+            scores = control_scores_by_question[userid]
+            valid_words_list = control_v_words_by_question[userid]
+            for qnum in scores.keys():
+                score = scores[qnum]
+                valid_words = valid_words_list[qnum]
+                cossim_test.questions_list.append(CosSim(userid, 'control', qnum, score, valid_words))
+        for userid in patient_scores_by_question.keys():
+            scores = patient_scores_by_question[userid]
+            valid_words_list = patient_v_words_by_question[userid]
+            for qnum in scores.keys():
+                score = scores[qnum]
+                valid_words = valid_words_list[qnum]
+                cossim_test.questions_list.append(CosSim(userid, 'patients', qnum, score, valid_words))
         win_cossim.append(cossim_test)
 
         if conf['output']['plot']:

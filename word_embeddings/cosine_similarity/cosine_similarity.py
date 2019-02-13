@@ -27,6 +27,11 @@ class CosineSimilarity:
         patients_scores = self._avg_cosine_sim.get_user_to_question_scores('patients')
         return control_scores, patients_scores
 
+    def get_user_to_question_valid_words(self):
+        control_scores = self._avg_cosine_sim.get_user_to_question_valid_words('control')
+        patients_scores = self._avg_cosine_sim.get_user_to_question_valid_words('patients')
+        return control_scores, patients_scores
+
     def get_scores_for_groups(self):
         control_scores = self._avg_cosine_sim.get_scores('control')
         patients_scores = self._avg_cosine_sim.get_scores('patients')

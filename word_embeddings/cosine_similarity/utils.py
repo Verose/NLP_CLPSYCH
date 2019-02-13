@@ -117,9 +117,18 @@ def cossim_scores_to_csv(tests, output_dir, logger):
     pd.set_option('display.expand_frame_repr', False)
     pd.set_option('max_colwidth', -1)
     dfs = []
-    headers = ['user', 'question', 'cos-sim score']
-    for i in tests:
-        df = pd.DataFrame([(item.userid, item.question_num, item.score) for item in i.questions_list], columns=headers)
+    header_prefix = ['group', 'user', 'question']
+    header = ['cos-sim score', 'valid words', '#valid words']
+    for i, t in enumerate(tests):
+        if i == 0:
+            df = pd.DataFrame(
+                [(item.group, item.userid, item.question_num, item.score, item.valid_words, item.n_valid) for item in
+                 t.questions_list],
+                columns=header_prefix + header)
+        else:
+            df = pd.DataFrame(
+                [(item.score, item.valid_words, item.n_valid) for item in t.questions_list],
+                columns=header)
         dfs += [df]
 
     keys = ['header: {}, window: {}'.format(test.header, test.window_size) for test in tests]
