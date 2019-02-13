@@ -20,6 +20,7 @@ class POSSlidingWindow(SlidingWindow):
         self._control_items = []
         self._patient_items = []
 
+        self.words_without_embeddings = []
         self._read_answers_pos_tags()
         super().__init__(model, data, window_size)
 
@@ -208,6 +209,9 @@ class POSSlidingWindow(SlidingWindow):
         :return: True/False
         """
         if word in string.punctuation:
+            return True
+        if word not in self._model:
+            self.words_without_embeddings.append(word)
             return True
         if pos_tag not in self._pos_tags_to_filter_in:
             if self._pos_tags_to_filter_in.lower() == 'all':

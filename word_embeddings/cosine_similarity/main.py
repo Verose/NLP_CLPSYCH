@@ -16,7 +16,7 @@ OUTPUT_DIR = os.path.join('..', 'outputs')
 DATA_DIR = os.path.join('..', 'data')
 LOGGER = logging.getLogger('Main')
 LOGGER.setLevel(logging.INFO)
-file_handler = logging.FileHandler(filename=os.path.join(OUTPUT_DIR, 'main_outputs.txt'))
+file_handler = logging.FileHandler(filename=os.path.join(OUTPUT_DIR, 'main_outputs.txt'), encoding='utf-8')
 formatter = logging.Formatter("%(message)s")
 file_handler.setFormatter(formatter)
 LOGGER.addHandler(file_handler)
@@ -94,6 +94,10 @@ def average_cosine_similarity_several_window_sizes(window_sizes):
             patients_repetitions = cosine_calcs.calculate_repetitions_for_group('patients')
             LOGGER.info('Average word repetition occurrences per answer: Control: {0:.4f}, Patients: {1:.4f}'
                         .format(control_repetitions, patients_repetitions))
+
+            words_without_embeddings = cosine_calcs.get_words_without_embeddings()
+            LOGGER.info('Words in corpus without FastText word embeddings: {}'.format(words_without_embeddings))
+            LOGGER.info('*************************************')
 
     LOGGER.debug('t-test results: {}'.format(str(win_tests)))
     ttest_results_to_csv(win_tests, OUTPUT_DIR, LOGGER)
