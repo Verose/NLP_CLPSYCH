@@ -1,11 +1,13 @@
 import string
 import sys
 
+import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
 from word_embeddings.cosine_similarity.sliding_window import SlidingWindow
-from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word, pos_tags_jsons_generator
+from word_embeddings.cosine_similarity.utils import pos_tags_jsons_generator
+from word_embeddings.common.utils import get_vector_repr_of_word
 
 
 class POSSlidingWindow(SlidingWindow):
@@ -105,7 +107,7 @@ class POSSlidingWindow(SlidingWindow):
         return {'scores': scores, 'repetitions': repetitions, 'items': items, 'valid_words': valid_words}
 
     def _read_answers_pos_tags(self):
-        pos_tags_generator = pos_tags_jsons_generator(self._data_dir)
+        pos_tags_generator = pos_tags_jsons_generator()
 
         for answer_num, ans_pos_tags in pos_tags_generator:
             self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
@@ -127,6 +129,7 @@ class POSSlidingWindow(SlidingWindow):
         valid_words = []
         valid_pos_tags = []
 
+        # get a list of valid words and their pos_tags
         for i, (word, pos_tag) in enumerate(zip(answer, pos_tags)):
             if self._should_skip(word, pos_tag):
                 continue
@@ -137,44 +140,44 @@ class POSSlidingWindow(SlidingWindow):
             return {'scores': 0, 'repetitions': 0, 'items': 0, 'valid_words': []}
 
         if self._window_method == 'forward':
-            repetitions, scores = self._avg_answer_scores_forward_window(valid_pos_tags, valid_words)
+            repetitions, scores = self._avg_answer_scores_forward_window(valid_words)
         else:
-            repetitions, scores = self._avg_answer_scores_surrounding_window(valid_pos_tags, valid_words)
+            repetitions, scores = self._avg_answer_scores_surrounding_window(valid_words)
 
         ret_score = sum(scores) / len(scores) if len(scores) > 0 else 0
         return {'scores': ret_score, 'repetitions': repetitions, 'items': len(valid_words),
                 'valid_words': valid_words}
 
-    def _avg_answer_scores_forward_window(self, valid_pos_tags, valid_words):
+    def _avg_answer_scores_forward_window(self, valid_words):
         scores = []
         repetitions = 0
 
-        for i, (word, pos_tag) in enumerate(zip(valid_words, valid_pos_tags)):
+        for i, word in enumerate(valid_words):
             if i + self._window_size >= len(valid_words):
                 break
 
             word_vector = get_vector_repr_of_word(self._model, word)
-            score = 0
+            win_scores = []
 
             # calculate cosine similarity for window
             for dist in range(1, self._window_size + 1):
                 context = valid_words[i + dist]
                 context_vector = get_vector_repr_of_word(self._model, context)
-                score += cosine_similarity([word_vector], [context_vector])[0][0]
+                win_scores.append(cosine_similarity([word_vector], [context_vector])[0][0])
 
                 if word == context:
                     repetitions += 1
 
             # average for window
-            score /= self._window_size
+            score = np.mean(win_scores)
             scores += [score]
         return repetitions, scores
 
-    def _avg_answer_scores_surrounding_window(self, valid_pos_tags, valid_words):
+    def _avg_answer_scores_surrounding_window(self, valid_words):
         scores = []
         repetitions = 0
 
-        for i, (word, pos_tag) in enumerate(zip(valid_words, valid_pos_tags)):
+        for i, word in enumerate(valid_words):
             if i - self._window_size < 0:
                 continue
             if i + self._window_size >= len(valid_words):

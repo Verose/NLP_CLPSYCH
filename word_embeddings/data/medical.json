@@ -1,15 +1,17 @@
 {
   "window_size": [
-    4, 3, 1, 4, 4
+    6, 6, 6, 6
   ],
+  "clean_data": true,
+  "word_embeddings": "cc.he.300.bin",
   "mode": "pos",
   "pos_tags": [
-    "noun verb adverb adjective", "verb", "adjective", "noun", "adverb"
+    "all", "noun verb adverb adjective", "noun verb", "verb"
   ],
-  "window_method": "surrounding",
+  "window_method": "forward",
   "output": {
     "plot": false,
-    "grid_search": false,
-    "grid_search_count": 4
+    "grid_search": true,
+    "grid_search_count": 6
   }
 }

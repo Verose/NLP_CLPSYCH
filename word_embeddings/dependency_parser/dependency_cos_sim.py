@@ -33,7 +33,7 @@ class DependencyCosSimScorer:
 
         # get part of speech tags
         self._answers_to_user_id_pos_data = {}
-        pos_tags_generator = pos_tags_jsons_generator(DATA_DIR)
+        pos_tags_generator = pos_tags_jsons_generator()
         for answer_num, ans_pos_tags in pos_tags_generator:
             self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
 
