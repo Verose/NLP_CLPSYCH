@@ -15,7 +15,8 @@ from xgboost import XGBClassifier
 
 from features import get_features, boosting_params, rf_params, svm_params
 from results_records import TestResults, ResultsRecord, AnswersResults
-from utils import LOGGER, OUTPUT_DIR
+from utils import LOGGER
+from word_embeddings.common.utils import OUTPUTS_DIR
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.expand_frame_repr', False)
@@ -166,7 +167,7 @@ def classify_base_best_classifier(data, y, tests):
     headers = ['t-statistic', 'p-value']
     df = pd.DataFrame([(t, p) for t, p in zip(tstatistic, pvalue)], columns=headers)
     df.insert(0, 'scorer', ['precision', 'recall', 'f1-score'])
-    df.to_csv(os.path.join(OUTPUT_DIR, "t-test_best_classifier.csv"), index=False)
+    df.to_csv(os.path.join(OUTPUTS_DIR, "t-test_best_classifier.csv"), index=False)
 
 
 def classify_base(data, y, tests, debug):
@@ -193,7 +194,7 @@ def classify_base(data, y, tests, debug):
         dfs_res += [df_res]
 
     dfs_res = pd.concat(dfs_res, axis=0)
-    dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_base.csv"), index=False)
+    dfs_res.to_csv(os.path.join(OUTPUTS_DIR, "classifier_base.csv"), index=False)
 
 
 def classify_per_question(data, y, tests, debug):
@@ -237,7 +238,7 @@ def classify_per_question(data, y, tests, debug):
 
     dfs_res = pd.concat(dfs_res, axis=0)
     dfs_res.insert(0, 'Features (#features)', features_list)
-    dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_per_answer.csv"), index=False)
+    dfs_res.to_csv(os.path.join(OUTPUTS_DIR, "classifier_per_answer.csv"), index=False)
 
 
 def classify_question_types(data, y, tests, debug):
@@ -289,4 +290,4 @@ def classify_question_types(data, y, tests, debug):
 
         dfs_res = pd.concat(dfs_res, axis=0)
         dfs_res.insert(0, 'Features (#features)', features_list)
-        dfs_res.to_csv(os.path.join(OUTPUT_DIR, "classifier_answers_{}.csv".format(ans_range)), index=False)
+        dfs_res.to_csv(os.path.join(OUTPUTS_DIR, "classifier_answers_{}.csv".format(ans_range)), index=False)

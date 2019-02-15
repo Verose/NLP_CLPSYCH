@@ -6,8 +6,9 @@ from gensim.models import FastText
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
-from utils import remove_females, remove_depressed, DATA_DIR, OUTPUT_DIR
-from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word, pos_tags_jsons_generator
+from word_embeddings.common.utils import remove_females, remove_depressed, OUTPUTS_DIR, DATA_DIR, \
+    get_vector_repr_of_word
+from word_embeddings.cosine_similarity.utils import pos_tags_jsons_generator
 from word_embeddings.dependency_parser.generate_relevant_sets import read_relevant_set, read_reference_set, \
     repair_document
 from word_embeddings.dependency_parser.idf_scores import IdfScores
@@ -162,7 +163,7 @@ class DependencyCosSimScorer:
             dfs += [df]
 
         dfs = pd.concat(dfs, axis=0)
-        dfs.to_csv(os.path.join(OUTPUT_DIR, "dependency_scores_{}.csv".format(group_name)), index=False)
+        dfs.to_csv(os.path.join(OUTPUTS_DIR, "dependency_scores_{}.csv".format(group_name)), index=False)
         return dfs
 
     @staticmethod

@@ -4,7 +4,7 @@ import optparse
 import os
 from collections import defaultdict, Counter
 
-DATA_DIR = os.path.join('..', 'data')
+from word_embeddings.common.utils import DATA_DIR
 
 
 def relevant():

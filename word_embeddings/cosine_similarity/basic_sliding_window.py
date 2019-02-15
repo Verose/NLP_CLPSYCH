@@ -5,7 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
 from word_embeddings.cosine_similarity.sliding_window import SlidingWindow
-from word_embeddings.cosine_similarity.utils import get_vector_repr_of_word
+from word_embeddings.common.utils import get_vector_repr_of_word
 
 
 class BasicSlidingWindow(SlidingWindow):

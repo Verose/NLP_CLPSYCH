@@ -6,7 +6,8 @@ import pandas as pd
 from classifier_tests import classify_base_best_classifier
 from features import pos_tags_features, cos_sim_features, sentiment_features, word_related_features, get_features, \
     add_tfidf_features, tf_idf_features
-from utils import DATA_DIR, LOGGER, remove_females, remove_depressed
+from utils import LOGGER
+from word_embeddings.common.utils import remove_females, remove_depressed, DATA_DIR
 
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 
