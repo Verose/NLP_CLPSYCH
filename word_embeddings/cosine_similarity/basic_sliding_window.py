@@ -5,14 +5,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
 from word_embeddings.cosine_similarity.sliding_window import SlidingWindow
-from word_embeddings.common.utils import get_vector_repr_of_word
 
 
 class BasicSlidingWindow(SlidingWindow):
     def __init__(self, model, data, window_size):
         super().__init__(model, data, window_size)
 
-    def calculate_all_avg_scores(self):
+    def calculate_all_scores(self):
         # iterate users
         for index, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False):
             user_id = row[0]
@@ -38,9 +37,9 @@ class BasicSlidingWindow(SlidingWindow):
             if label == 'control':
                 self._control_scores += [(avg_user_score, user_id)]
             else:
-                self._patient_scores += [(avg_user_score, user_id)]
+                self._patients_scores += [(avg_user_score, user_id)]
 
-    def calculate_avg_score_for_group(self, group='control'):
+    def calculate_group_scores(self, group='control'):
         scores = self.get_scores(group)
         return sum(scores) / len(scores)
 
@@ -56,13 +55,13 @@ class BasicSlidingWindow(SlidingWindow):
             if pos + self._window_size >= len(answer):
                 break
 
-            word_vector = get_vector_repr_of_word(self._model, word)
+            word_vector = self._model[word]
             score = 0
 
             # calculate cosine similarity for window
             for dist in range(1, self._window_size + 1):
                 context = answer[pos + dist]
-                context_vector = get_vector_repr_of_word(self._model, context)
+                context_vector = self._model[context]
                 score += cosine_similarity([word_vector], [context_vector])[0][0]
 
             score /= self._window_size

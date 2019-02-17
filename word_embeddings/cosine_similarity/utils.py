@@ -1,5 +1,3 @@
-import glob
-import json
 import os
 import string
 
@@ -25,22 +23,6 @@ def get_medical_data(clean_data=False):
         medical_data[column] = medical_data[column].str.replace('[{}]'.format(string.punctuation), '')
 
     return medical_data
-
-
-def read_conf():
-    json_file = open(os.path.join(DATA_DIR, 'medical.json')).read()
-    json_data = json.loads(json_file, encoding='utf-8')
-    return json_data
-
-
-def pos_tags_jsons_generator():
-    json_pattern = os.path.join(DATA_DIR, 'answers_pos_tags', '*.json')
-    json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
-
-    for file in json_files:
-        with open(file, encoding='utf-8') as f:
-            ans_pos_tags = json.load(f)
-            yield int(os.path.basename(file).split('.')[0]), ans_pos_tags
 
 
 def plot_groups_histograms(control_scores_by_question,
@@ -112,18 +94,16 @@ def cossim_scores_to_csv(tests, logger, unique_name=''):
     pd.set_option('display.expand_frame_repr', False)
     pd.set_option('max_colwidth', -1)
     dfs = []
-    header_prefix = ['group', 'user', 'question']
-    header = ['cos-sim score', 'valid words', '#valid words']
+    header_prefix = ['group', 'user', 'question', 'valid words', '#valid words']
+    header = ['cos-sim score']
     for i, t in enumerate(tests):
         if i == 0:
             df = pd.DataFrame(
-                [(item.group, item.userid, item.question_num, item.score, item.valid_words, item.n_valid) for item in
+                [(item.group, item.userid, item.question_num, item.valid_words, item.n_valid, item.score) for item in
                  t.questions_list],
                 columns=header_prefix + header)
         else:
-            df = pd.DataFrame(
-                [(item.score, item.valid_words, item.n_valid) for item in t.questions_list],
-                columns=header)
+            df = pd.DataFrame([(item.score,) for item in t.questions_list], columns=header)
         dfs += [df]
 
     keys = ['header: {}, window: {}'.format(test.header, test.window_size) for test in tests]
@@ -134,49 +114,57 @@ def cossim_scores_to_csv(tests, logger, unique_name=''):
 
 def plot_window_size_vs_scores_per_group(groups_scores):
     """
-    One figure: for every word category set (e.g. all, content words, noun-verb, verbs):
+    Plots a figure for every word category set (e.g. all, content words, noun-verb, verbs) where:
     win_sizes axis: window sizes
-    avg_scores axis: average cosine sim
+    mean_scores axis: average cosine sim
     plot two curves: one for patients and one for control.
     :param groups_scores: dictionary from pos tags tests to control/patients tuples of (win sizes, scores_list)
     :return: nothing
     """
-    plt.clf()
-    fig, ax = plt.subplots()
-    win_sizes = range(1, 5)
 
     for i, (pos_tags, groups) in enumerate(groups_scores.items()):
+        plt.clf()
+        fig, ax = plt.subplots()
         control_scores = groups["control"]
         patients_scores = groups["patients"]
 
-        # plot control group
-        win_sizes = [score[0] for score in control_scores]
-        avg_scores = [score[1] for score in control_scores]
-        if i == 0:
-            ax.plot(win_sizes, avg_scores, marker='*', c='red', label='control')
-        else:
-            ax.plot(win_sizes, avg_scores, marker='*', c='red')
-        ax.annotate(pos_tags, xy=(win_sizes[i], avg_scores[i]), xycoords='data', xytext=(-20, 20),
-                    textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
+        win_sizes = grid_plot_group(ax, i, control_scores, marker='*', c='red', label='control', xytext=(-20, 20))
+        win_sizes = grid_plot_group(ax, i, patients_scores, marker='.', c='blue', label='patients', xytext=(-20, -20))
 
-        # plot patients group
-        win_sizes = [score[0] for score in patients_scores]
-        avg_scores = [score[1] for score in patients_scores]
-        if i == 0:
-            ax.plot(win_sizes, avg_scores, marker='.', c='blue', label='patients')
-        else:
-            ax.plot(win_sizes, avg_scores, marker='.', c='blue')
-        ax.annotate(pos_tags,
-                    xy=(win_sizes[i], avg_scores[i]), xycoords='data', xytext=(-20, -20),
-                    textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
+        ax.set_xlabel('window sizes')
+        ax.set_xticks(win_sizes)
+        ax.set_ylabel('avg cos-sim score')
+        plt.legend()
+        ax.set_title('Group Scores Per Window Size {}'.format(pos_tags))
 
-    ax.set_xlabel('window sizes')
-    ax.set_xticks(win_sizes)
-    ax.set_ylabel('avg cos-sim score')
-    plt.legend()
-    ax.set_title('Group Scores Per Window Size')
+        plt.savefig(os.path.join(OUTPUTS_DIR, "group_scores_per_win_size_{}.png".format('_'.join(pos_tags))))
 
-    plt.savefig(os.path.join(OUTPUTS_DIR, "group_scores_per_win_size.png"))
+
+def grid_plot_group(ax, i, scores, marker, c, label, xytext):
+    # plot patients group
+    win_sizes = [score[0] for score in scores]
+    mean_scores = [score[1] for score in scores]
+    min_scores = [score[2] for score in scores]
+    max_scores = [score[3] for score in scores]
+
+    if i == 0:
+        ax.plot(win_sizes, mean_scores, marker=marker, c=c, label=label)
+        ax.plot(win_sizes, min_scores, marker=marker, c=c)
+        ax.plot(win_sizes, max_scores, marker=marker, c=c)
+    else:
+        ax.plot(win_sizes, mean_scores, marker=marker, c=c)
+        ax.plot(win_sizes, min_scores, marker=marker, c=c)
+        ax.plot(win_sizes, max_scores, marker=marker, c=c)
+    ax.annotate('mean',
+                xy=(win_sizes[i], mean_scores[i]), xycoords='data', xytext=xytext,
+                textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
+    ax.annotate('min',
+                xy=(win_sizes[i], min_scores[i]), xycoords='data', xytext=xytext,
+                textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
+    ax.annotate('max',
+                xy=(win_sizes[i], max_scores[i]), xycoords='data', xytext=xytext,
+                textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
+    return win_sizes
 
 
 def plot_grid_search(grid_search, output_dir):

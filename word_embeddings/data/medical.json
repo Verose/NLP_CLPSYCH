@@ -3,7 +3,7 @@
     6, 6, 6, 6
   ],
   "clean_data": true,
-  "word_embeddings": "cc.he.300.bin",
+  "word_embeddings": "cc.he.300.vec",
   "mode": "pos",
   "pos_tags": [
     "all", "noun verb adverb adjective", "noun verb", "verb"

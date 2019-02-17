@@ -4,13 +4,13 @@ import warnings
 
 from tqdm import tqdm
 
+from word_embeddings.common.utils import read_conf, load_model, get_words
 from word_embeddings.cosine_similarity.cos_sim_records import WindowCosSim, CosSim
 from word_embeddings.cosine_similarity.cosine_similarity import CosineSimilarity
 from word_embeddings.cosine_similarity.ttest_records import WindowTTest, TTest
 from word_embeddings.cosine_similarity.utils import *
 
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
-from gensim.models.wrappers import FastText
 
 LOGGER = logging.getLogger('Main')
 LOGGER.setLevel(logging.INFO)
@@ -20,7 +20,7 @@ file_handler.setFormatter(formatter)
 LOGGER.addHandler(file_handler)
 
 
-def average_cosine_similarity_several_window_sizes(window_sizes):
+def cosine_similarity_several_window_sizes(window_sizes):
     pos_tags = ''
     win_tests = []
     win_cossim = []
@@ -44,14 +44,19 @@ def average_cosine_similarity_several_window_sizes(window_sizes):
         win_test = WindowTTest(header, win_size, [])
         cossim_test = WindowCosSim(header, win_size, [])
 
-        control_score = cosine_calcs.calculate_avg_score_for_group('control')
-        patients_score = cosine_calcs.calculate_avg_score_for_group('patients')
+        control_mean, control_min, control_max = cosine_calcs.calculate_group_scores('control')
+        patients_mean, patients_min, patients_max = cosine_calcs.calculate_group_scores('patients')
         LOGGER.info('Scores for window size {}: '.format(win_size))
         LOGGER.info('Average Cos-Sim per answer: Control: {0:.4f}, Patients: {1:.4f}'
-                    .format(control_score, patients_score))
-        control_scores_gs.append((win_size, control_score))
-        patients_scores_gs.append((win_size, patients_score))
-        gs_window.append((win_size, control_score-patients_score))
+                    .format(control_mean, patients_mean))
+        LOGGER.info('Minimum Cos-Sim per answer: Control: {0:.4f}, Patients: {1:.4f}'
+                    .format(control_min, patients_min))
+        LOGGER.info('Maximum Cos-Sim per answer: Control: {0:.4f}, Patients: {1:.4f}'
+                    .format(control_max, patients_max))
+
+        control_scores_gs.append((win_size, control_mean, control_min, control_max))
+        patients_scores_gs.append((win_size, patients_mean, patients_min, patients_max))
+        gs_window.append((win_size, control_mean - patients_mean))
 
         tstatistic, pvalue = cosine_calcs.calculate_ttest_scores()
         LOGGER.info('t-test scores on averages: t-statistic: {0:.4f}, p-value: {1:.4f} '.format(tstatistic, pvalue))
@@ -63,20 +68,8 @@ def average_cosine_similarity_several_window_sizes(window_sizes):
 
         control_scores_by_question, patient_scores_by_question = cosine_calcs.get_user_to_question_scores()
         control_v_words_by_question, patient_v_words_by_question = cosine_calcs.get_user_to_question_valid_words()
-        for userid in control_scores_by_question.keys():
-            scores = control_scores_by_question[userid]
-            valid_words_list = control_v_words_by_question[userid]
-            for qnum in scores.keys():
-                score = scores[qnum]
-                valid_words = valid_words_list[qnum]
-                cossim_test.questions_list.append(CosSim(userid, 'control', qnum, score, valid_words))
-        for userid in patient_scores_by_question.keys():
-            scores = patient_scores_by_question[userid]
-            valid_words_list = patient_v_words_by_question[userid]
-            for qnum in scores.keys():
-                score = scores[qnum]
-                valid_words = valid_words_list[qnum]
-                cossim_test.questions_list.append(CosSim(userid, 'patients', qnum, score, valid_words))
+        calculate_cossim_scores_for_test(control_scores_by_question, control_v_words_by_question,
+                                         patient_scores_by_question, patient_v_words_by_question, cossim_test)
         win_cossim.append(cossim_test)
 
         if conf['output']['plot']:
@@ -115,10 +108,24 @@ def average_cosine_similarity_several_window_sizes(window_sizes):
     return ret_val
 
 
+def calculate_cossim_scores_for_test(control_scores_by_question, control_v_words_by_question,
+                                     patient_scores_by_question, patient_v_words_by_question, cossim_test):
+    for userid, scores in control_scores_by_question.items():
+        valid_words_list = control_v_words_by_question[userid]
+        for qnum, score in scores.items():
+            valid_words = valid_words_list[qnum]
+            cossim_test.questions_list.append(CosSim(userid, 'control', qnum, score, valid_words))
+    for userid, scores in patient_scores_by_question.items():
+        valid_words_list = patient_v_words_by_question[userid]
+        for qnum, score in scores.items():
+            valid_words = valid_words_list[qnum]
+            cossim_test.questions_list.append(CosSim(userid, 'patients', qnum, score, valid_words))
+
+
 if __name__ == '__main__':
     conf = read_conf()
     data = get_medical_data(clean_data=conf["clean_data"])
-    model = FastText.load_fasttext_format(os.path.join(DATA_DIR, 'ft_pretrained', conf["word_embeddings"]))
+    model = load_model(get_words(), conf['word_embeddings'])
 
     if conf['output']['grid_search'] and conf['mode'] == 'pos':
         pos_tags_list = conf['pos_tags']
@@ -127,9 +134,9 @@ if __name__ == '__main__':
         grid_search = []
         groups_scores = {}
 
-        for pos_tag in pos_tags_list:
+        for pos_tag in tqdm(pos_tags_list, file=sys.stdout, total=len(pos_tags_list), leave=False, desc='Grid Search'):
             conf['pos_tags'] = [pos_tag] * grid_search_count
-            grid_search_window = average_cosine_similarity_several_window_sizes(pos_tags_win_sizes)
+            grid_search_window = cosine_similarity_several_window_sizes(pos_tags_win_sizes)
             grid_search.append((pos_tag, grid_search_window["gs_window"]))
             groups_scores[pos_tag] = {
                 "control": grid_search_window["control_scores"],
@@ -139,4 +146,4 @@ if __name__ == '__main__':
         plot_grid_search(grid_search, OUTPUTS_DIR)
         plot_window_size_vs_scores_per_group(groups_scores)
     else:
-        average_cosine_similarity_several_window_sizes(conf['window_size'])
+        cosine_similarity_several_window_sizes(conf['window_size'])

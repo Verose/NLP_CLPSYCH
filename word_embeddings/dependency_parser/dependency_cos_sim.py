@@ -7,8 +7,7 @@ from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
 from word_embeddings.common.utils import remove_females, remove_depressed, OUTPUTS_DIR, DATA_DIR, \
-    get_vector_repr_of_word
-from word_embeddings.cosine_similarity.utils import pos_tags_jsons_generator
+    get_vector_repr_of_word, pos_tags_jsons_generator
 from word_embeddings.dependency_parser.generate_relevant_sets import read_relevant_set, read_reference_set, \
     repair_document
 from word_embeddings.dependency_parser.idf_scores import IdfScores

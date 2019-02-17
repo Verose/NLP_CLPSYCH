@@ -2,6 +2,7 @@ import abc
 import logging
 import os
 import sys
+from collections import defaultdict
 from datetime import datetime
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
@@ -18,12 +19,12 @@ class SlidingWindow(object):
         self._window_size = window_size
         self._logger = self._setup_logger()
 
-        self._control_scores = []
-        self._patient_scores = []
+        self._control_scores = defaultdict(list)
+        self._patients_scores = defaultdict(list)
         self._control_users_to_question_scores = {}
-        self._patient_users_to_question_scores = {}
+        self._patients_users_to_question_scores = {}
         self._control_users_to_valid_words = {}
-        self._patient_users_to_valid_words = {}
+        self._patients_users_to_valid_words = {}
 
     def _setup_logger(self):
         logger = logging.getLogger(self.__class__.__name__)
@@ -40,31 +41,27 @@ class SlidingWindow(object):
         return logger
 
     def get_scores(self, group='control'):
-        if group == 'control':
-            return [score[0] for score in self._control_scores]
-        else:
-            return [score[0] for score in self._patient_scores]
+        group = self._control_scores if group == 'control' else self._patients_scores
+        mean_scores = [score[0] for score in group['mean']]
+        min_scores = [score[0] for score in group['min']]
+        max_scores = [score[0] for score in group['max']]
+        return mean_scores, min_scores, max_scores
 
     def get_user_to_question_scores(self, group='control'):
-        if group == 'control':
-            return self._control_users_to_question_scores
-        else:
-            return self._patient_users_to_question_scores
+        return self._control_users_to_question_scores if group == 'control' \
+            else self._patients_users_to_question_scores
 
     def get_user_to_question_valid_words(self, group='control'):
-        if group == 'control':
-            return self._control_users_to_valid_words
-        else:
-            return self._patient_users_to_valid_words
+        return self._control_users_to_valid_words if group == 'control' else self._patients_users_to_valid_words
 
     def perform_ttest_on_averages(self):
         """
         Performs t-test on the average cos-sim score of each user
         :return:
         """
-        control_scores = self.get_scores('control')
-        patient_scores = self.get_scores('patients')
-        ttest = stats.ttest_ind(control_scores, patient_scores)
+        control_mean, control_min, control_max = self.get_scores('control')
+        patients_mean, patients_min, patients_max = self.get_scores('patients')
+        ttest = stats.ttest_ind(control_mean, patients_mean)
         return ttest
 
     def perform_ttest_on_all(self):
@@ -75,28 +72,28 @@ class SlidingWindow(object):
         control_scores_by_question = self.get_user_to_question_scores('control')
         patient_scores_by_question = self.get_user_to_question_scores('patients')
 
-        control = [cont for cont in control_scores_by_question.values()]
-        patients = [pat for pat in patient_scores_by_question.values()]
+        control = [val for val in control_scores_by_question.values()]
+        patients = [val for val in patient_scores_by_question.values()]
 
         all_control = []
         for cont_dict in control:
             small_control = []
             for cont in cont_dict.values():
-                small_control += [cont]
+                small_control += [cont['mean']]
             all_control += [small_control]
 
         all_pat = []
         for pat_dict in patients:
             small_pat = []
             for pat in pat_dict.values():
-                small_pat += [pat]
+                small_pat += [pat['mean']]
             all_pat += [small_pat]
 
         ttest = stats.ttest_ind(all_control, all_pat)
         return ttest
 
     @abc.abstractmethod
-    def calculate_all_avg_scores(self):
+    def calculate_all_scores(self):
         """
         Calculate the cosine similarity of the entire corpus
         :return: dictionary from user id to (average user score, label)
@@ -104,7 +101,7 @@ class SlidingWindow(object):
         pass
 
     @abc.abstractmethod
-    def calculate_avg_score_for_group(self, group='control'):
+    def calculate_group_scores(self, group='control'):
         """
         Calculates the average score for a given group
         :param group: group name, either 'control' or 'patients'

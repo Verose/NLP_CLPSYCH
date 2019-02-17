@@ -12,45 +12,45 @@ logger.setLevel(logging.INFO)
 
 class CosineSimilarity:
     def __init__(self, model, data, mode, window_size, data_dir=None, **kwargs):
-        self._avg_cosine_sim = None
+        self._cosine_sim = None
 
         if mode == "sliding_window":
-            self._avg_cosine_sim = BasicSlidingWindow(model, data, window_size)
+            self._cosine_sim = BasicSlidingWindow(model, data, window_size)
         elif mode == "pos":
-            self._avg_cosine_sim = POSSlidingWindow(model, data, window_size, data_dir, **kwargs)
+            self._cosine_sim = POSSlidingWindow(model, data, window_size, data_dir, **kwargs)
 
     def init_calculations(self):
-        return self._avg_cosine_sim.calculate_all_avg_scores()
+        return self._cosine_sim.calculate_all_scores()
 
     def get_user_to_question_scores(self):
-        control_scores = self._avg_cosine_sim.get_user_to_question_scores('control')
-        patients_scores = self._avg_cosine_sim.get_user_to_question_scores('patients')
+        control_scores = self._cosine_sim.get_user_to_question_scores('control')
+        patients_scores = self._cosine_sim.get_user_to_question_scores('patients')
         return control_scores, patients_scores
 
     def get_user_to_question_valid_words(self):
-        control_scores = self._avg_cosine_sim.get_user_to_question_valid_words('control')
-        patients_scores = self._avg_cosine_sim.get_user_to_question_valid_words('patients')
+        control_scores = self._cosine_sim.get_user_to_question_valid_words('control')
+        patients_scores = self._cosine_sim.get_user_to_question_valid_words('patients')
         return control_scores, patients_scores
 
     def get_scores_for_groups(self):
-        control_scores = self._avg_cosine_sim.get_scores('control')
-        patients_scores = self._avg_cosine_sim.get_scores('patients')
+        control_scores = self._cosine_sim.get_scores('control')
+        patients_scores = self._cosine_sim.get_scores('patients')
         return control_scores, patients_scores
 
-    def calculate_avg_score_for_group(self, group='control'):
-        return self._avg_cosine_sim.calculate_avg_score_for_group(group)
+    def calculate_group_scores(self, group='control'):
+        return self._cosine_sim.calculate_group_scores(group)
 
     def calculate_ttest_scores(self):
-        return self._avg_cosine_sim.perform_ttest_on_averages()
+        return self._cosine_sim.perform_ttest_on_averages()
 
     def calculate_ttest_scores_all(self):
-        return self._avg_cosine_sim.perform_ttest_on_all()
+        return self._cosine_sim.perform_ttest_on_all()
 
     def calculate_repetitions_for_group(self, group='control'):
-        return self._avg_cosine_sim.calculate_repetitions_for_group(group)
+        return self._cosine_sim.calculate_repetitions_for_group(group)
 
     def calculate_items_for_group(self, group='control'):
-        return self._avg_cosine_sim.calculate_items_for_group(group)
+        return self._cosine_sim.calculate_items_for_group(group)
 
     def get_words_without_embeddings(self):
-        return set(self._avg_cosine_sim.words_without_embeddings)
+        return set(self._cosine_sim.words_without_embeddings)
