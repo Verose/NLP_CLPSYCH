@@ -28,19 +28,19 @@ def remove_depressed(df, removed):
     return res
 
 
-def get_vector_repr_of_word(model, word):
-    try:
-        return model[word]
-    except KeyError:
-        if str.isdecimal(word):
-            replacement_word = '<מספר>'
-        elif str.isalpha(word):
-            replacement_word = '<אנגלית>'
-        elif any(i.isdigit() for i in word) and any("\u0590" <= c <= "\u05EA" for c in word):
-            replacement_word = '<אות ומספר>'
-        else:
-            replacement_word = '<לא ידוע>'
-        return model[replacement_word]
+# def get_vector_repr_of_word(model, word):
+#     try:
+#         return model[word]
+#     except KeyError:
+#         if str.isdecimal(word):
+#             replacement_word = '<מספר>'
+#         elif str.isalpha(word):
+#             replacement_word = '<אנגלית>'
+#         elif any(i.isdigit() for i in word) and any("\u0590" <= c <= "\u05EA" for c in word):
+#             replacement_word = '<אות ומספר>'
+#         else:
+#             replacement_word = '<לא ידוע>'
+#         return model[replacement_word]
 # def get_vector_repr_of_word(word, is_in=False):
 #     headers = {
 #         'Content-Type': 'application/json',
@@ -78,6 +78,21 @@ def get_words():
     return set(words)
 
 
+def get_sets_words():
+    control_nouns = read_relevant_set('nouns', 'control')
+    control_verbs = read_relevant_set('verbs', 'control')
+    patients_nouns = read_relevant_set('nouns', 'patients')
+    patients_verbs = read_relevant_set('verbs', 'patients')
+    reference_nouns = read_reference_set('nouns')
+    reference_verbs = read_reference_set('verbs')
+    words = []
+
+    for words_dict in [control_nouns, control_verbs, patients_nouns, patients_verbs, reference_nouns, reference_verbs]:
+        words.extend(list(words_dict.keys()))
+        words.extend([item for sublist in list(words_dict.values()) for item in sublist])
+    return set(words)
+
+
 def pos_tags_jsons_generator():
     json_pattern = os.path.join(DATA_DIR, 'answers_pos_tags', '*.json')
     json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
@@ -86,3 +101,17 @@ def pos_tags_jsons_generator():
         with open(file, encoding='utf-8') as f:
             ans_pos_tags = json.load(f)
             yield int(os.path.basename(file).split('.')[0]), ans_pos_tags
+
+
+def read_relevant_set(pos_tag, group):
+    with open(os.path.join(DATA_DIR, 'relevant_sets', group, '{}_norm_relevant_set_{}.json'.format(group, pos_tag)),
+              encoding='utf-8') as f:
+        relevant_set = json.load(f)
+    return relevant_set
+
+
+def read_reference_set(pos_tag):
+    with open(os.path.join(DATA_DIR, 'reference_sets', 'norm_reference_set_{}.json'.format(pos_tag)),
+              encoding='utf-8') as f:
+        relevant_set = json.load(f)
+    return relevant_set

@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
-from word_embeddings.common.utils import OUTPUTS_DIR, DATA_DIR
+from word_embeddings.common.utils import OUTPUTS_DIR, DATA_DIR, read_relevant_set
 
 noun_tags = ['NN', 'NNP', 'NNPS', 'NNS']
 adjective_tags = ['JJ', 'JJR', 'JJS']
@@ -102,20 +102,6 @@ def load_sets(file_pattern):
         with open(verbs_pattern, encoding='utf-8') as input_file:
             verbs_set.update(json.load(input_file))
     return nouns_set, verbs_set
-
-
-def read_relevant_set(pos_tag, group):
-    with open(os.path.join(DATA_DIR, 'relevant_sets', group, '{}_norm_relevant_set_{}.json'.format(group, pos_tag)),
-              encoding='utf-8') as f:
-        relevant_set = json.load(f)
-    return relevant_set
-
-
-def read_reference_set(pos_tag):
-    with open(os.path.join(DATA_DIR, 'reference_sets', 'norm_reference_set_{}.json'.format(pos_tag)),
-              encoding='utf-8') as f:
-        relevant_set = json.load(f)
-    return relevant_set
 
 
 def repair_document(sentence):

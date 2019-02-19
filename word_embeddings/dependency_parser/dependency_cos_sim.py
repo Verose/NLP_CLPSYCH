@@ -2,14 +2,12 @@ import os
 
 import numpy as np
 import pandas as pd
-from gensim.models import FastText
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
-from word_embeddings.common.utils import remove_females, remove_depressed, OUTPUTS_DIR, DATA_DIR, \
-    get_vector_repr_of_word, pos_tags_jsons_generator
-from word_embeddings.dependency_parser.generate_relevant_sets import read_relevant_set, read_reference_set, \
-    repair_document
+from word_embeddings.common.utils import pos_tags_jsons_generator, DATA_DIR, OUTPUTS_DIR, \
+    load_model, get_sets_words, read_relevant_set, read_reference_set
+from word_embeddings.dependency_parser.generate_relevant_sets import repair_document
 from word_embeddings.dependency_parser.idf_scores import IdfScores
 
 
@@ -37,13 +35,14 @@ class DependencyCosSimScorer:
             self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
 
         # init model
-        self._model = FastText.load_fasttext_format(os.path.join(DATA_DIR, 'ft_pretrained', 'wiki.he.bin'))
+        self._model = load_model(get_sets_words(), 'cc.he.300.vec')
 
         # calculate idf scores for words
         self._idf_scores = IdfScores(self.get_documents(), repair_document)
         self._idf_scores.calculate_idf_scores()
 
         self.missing_idf = {}
+        self.words_without_embeddings = []
         self.missing_words = []
 
     @staticmethod
@@ -146,19 +145,21 @@ class DependencyCosSimScorer:
         for context in contexts:
             idf = self._idf_scores.get_idf_score(context)
             if idf:
-                context_rep = get_vector_repr_of_word(self._model, context)
-                context_vector += idf * context_rep
+                if context in self._model:
+                    context_vector += idf * self._model[context]
+                else:
+                    self.words_without_embeddings.append(context)
             else:
                 self.missing_idf[context] = error_msg
         return context_vector
 
     @staticmethod
-    def save_per_user_scores(avgs_nouns, avgs_verbs, group_name):
+    def save_per_user_scores(avgs_nouns, avgs_verbs, users, group_name):
         dfs = []
-        headers = ['nouns', 'verbs']
+        headers = ['id', 'nouns', 'verbs']
 
-        for noun, verb in zip(avgs_nouns, avgs_verbs):
-            df = pd.DataFrame([(noun, verb)], columns=headers)
+        for user, noun, verb in zip(users, avgs_nouns, avgs_verbs):
+            df = pd.DataFrame([(user, noun, verb)], columns=headers)
             dfs += [df]
 
         dfs = pd.concat(dfs, axis=0)
@@ -167,45 +168,7 @@ class DependencyCosSimScorer:
 
     @staticmethod
     def ttest_group_scores(control_users_scores, patients_users_scores):
+        control_users_scores = control_users_scores[['nouns', 'verbs']]
+        patients_users_scores = patients_users_scores[['nouns', 'verbs']]
         ttest = stats.ttest_ind(control_users_scores, patients_users_scores)
         return ttest
-
-
-def main():
-    removed_ids = []
-    df_res = pd.read_csv(os.path.join(DATA_DIR, 'features_all.csv'))
-    df_res = remove_females(df_res, removed_ids)
-    df_res = remove_depressed(df_res, removed_ids)
-    control = (df_res[df_res['label'] == 'control']['id'].values, 'control')
-    patients = (df_res[df_res['label'] == 'patient']['id'].values, 'patients')
-
-    dep_scorer = DependencyCosSimScorer()
-
-    users_scores = {}
-    for group, group_name in [control, patients]:
-        for user in group:
-            user_scores = dep_scorer.cos_sim_score_for_user(user, group_name)
-            users_scores[user] = user_scores
-
-    avgs_nouns, avgs_verbs = dep_scorer.all_users_scores(control[0], users_scores)
-    control_scores = dep_scorer.score_group(avgs_nouns, avgs_verbs)
-    control_users_scores = dep_scorer.save_per_user_scores(avgs_nouns, avgs_verbs, control[1])
-    print("Control group scores: nouns: {}, verbs: {}".format(*control_scores))
-
-    avgs_nouns, avgs_verbs = dep_scorer.all_users_scores(patients[0], users_scores)
-    patients_scores = dep_scorer.score_group(avgs_nouns, avgs_verbs)
-    patients_users_scores = dep_scorer.save_per_user_scores(avgs_nouns, avgs_verbs, patients[1])
-    print("Patients group scores: nouns: {}, verbs: {}".format(*patients_scores))
-
-    ttest_results = dep_scorer.ttest_group_scores(control_users_scores, patients_users_scores)
-    pvalues = ttest_results.pvalue
-    tstatistics = ttest_results.statistic
-    print('T-Test results:')
-    print('nouns: p-value: {}, t-statistic: {}'.format(pvalues[0], tstatistics[0]))
-    print('verbs: p-value: {}, t-statistic: {}'.format(pvalues[1], tstatistics[1]))
-    print('No idf scores for words {}\n'.format(dep_scorer.missing_idf))
-    print('Words missing from sets {}\n'.format(set(dep_scorer.missing_words)))
-
-
-if __name__ == '__main__':
-    main()
