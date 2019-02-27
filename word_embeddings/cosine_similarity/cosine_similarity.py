@@ -1,13 +1,5 @@
-import logging
-import sys
-
 from word_embeddings.cosine_similarity.basic_sliding_window import BasicSlidingWindow
 from word_embeddings.cosine_similarity.pos_tags_window import POSSlidingWindow
-
-logger = logging.getLogger('CosineSimilarity')
-logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
-logger.addHandler(logging.StreamHandler(sys.stdout))
-logger.setLevel(logging.INFO)
 
 
 class CosineSimilarity:

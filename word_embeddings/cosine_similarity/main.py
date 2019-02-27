@@ -1,6 +1,5 @@
 import logging
 import sys
-import warnings
 
 from tqdm import tqdm
 
@@ -9,8 +8,6 @@ from word_embeddings.cosine_similarity.cos_sim_records import WindowCosSim, CosS
 from word_embeddings.cosine_similarity.cosine_similarity import CosineSimilarity
 from word_embeddings.cosine_similarity.ttest_records import WindowTTest, TTest
 from word_embeddings.cosine_similarity.utils import *
-
-warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 
 LOGGER = logging.getLogger('Main')
 LOGGER.setLevel(logging.INFO)
