@@ -44,6 +44,14 @@ class DependencyCosSimScorer:
         self.missing_idf = {}
         self.words_without_embeddings = []
         self.missing_words = []
+        self.pos_tags_used = {
+            'control': {'nouns': [], 'verbs': []},
+            'patients': {'nouns': [], 'verbs': []}
+        }
+        self.modifiers_used = {
+            'control': {'noun': [], 'verb': []},
+            'patients': {'noun': [], 'verb': []}
+        }
 
     @staticmethod
     def get_documents():
@@ -102,8 +110,10 @@ class DependencyCosSimScorer:
                     score = self.cos_sim_for_tag(word, pos_tag, group)
                     if score and pos_tag == 'noun':
                         ans_noun_scores += [score]
+                        self.pos_tags_used[group]['nouns'] += [word]
                     elif score and pos_tag == 'verb':
                         ans_verb_scores += [score]
+                        self.pos_tags_used[group]['verbs'] += [word]
 
             scores[answer_num] = (ans_noun_scores, ans_verb_scores)
         return scores
@@ -117,17 +127,19 @@ class DependencyCosSimScorer:
 
         relevant_context = self._relevant_tags[group][pos_tag][word]
         reference_context = self._reference_tags[pos_tag][word]
-        score = self.score(relevant_context, reference_context)
+        score = self.score(relevant_context, reference_context, pos_tag, group)
 
         return score
 
-    def score(self, relevant_contexts, reference_contexts):
+    def score(self, relevant_contexts, reference_contexts, pos_tag, group):
         relevant_context_vector = np.zeros((300,))
         reference_context_vector = np.zeros((300,))
 
         relevant_context_vector = self.idf_score(
             relevant_context_vector,
             relevant_contexts,
+            pos_tag=pos_tag,
+            group=group,
             error_msg='relevant word')
         reference_context_vector = self.idf_score(
             reference_context_vector,
@@ -141,12 +153,14 @@ class DependencyCosSimScorer:
         cos_sim = cosine_similarity([relevant_context_vector], [reference_context_vector])[0][0]
         return cos_sim
 
-    def idf_score(self, context_vector, contexts, error_msg):
+    def idf_score(self, context_vector, contexts, pos_tag=None, group=None, error_msg=''):
         for context in contexts:
             idf = self._idf_scores.get_idf_score(context)
             if idf:
                 if context in self._model:
                     context_vector += idf * self._model[context]
+                    if group:
+                        self.modifiers_used[group][pos_tag] += [context]
                 else:
                     self.words_without_embeddings.append(context)
             else:

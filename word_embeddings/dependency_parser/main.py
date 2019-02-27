@@ -49,6 +49,18 @@ def main():
     LOGGER.info('verbs: p-value: {}, t-statistic: {}'.format(pvalues[1], tstatistics[1]))
     LOGGER.info('No idf scores for words {}\n'.format(dep_scorer.missing_idf))
     LOGGER.info('Words without embeddings {}\n'.format(set(dep_scorer.words_without_embeddings)))
+    usage = dep_scorer.pos_tags_used
+    LOGGER.info('Pos tags usage: ')
+    LOGGER.info('Control: nouns: {}, verbs: {}. '.format(len(set(usage['control']['nouns'])),
+                                                         len(set(usage['control']['verbs']))))
+    LOGGER.info('Patients: nouns: {}, verbs: {}'.format(len(set(usage['patients']['nouns'])),
+                                                        len(set(usage['patients']['verbs']))))
+    usage = dep_scorer.modifiers_used
+    LOGGER.info('Modifiers usage: ')
+    LOGGER.info('Control: adjectives: {}, adverbs: {}. '.format(len(set(usage['control']['noun'])),
+                                                                len(set(usage['control']['verb']))))
+    LOGGER.info('Patients: adjectives: {}, adverbs: {}'.format(len(set(usage['patients']['noun'])),
+                                                               len(set(usage['patients']['verb']))))
 
 
 if __name__ == '__main__':
