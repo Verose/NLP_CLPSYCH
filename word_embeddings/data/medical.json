@@ -1,12 +1,11 @@
 {
   "window_size": [
-    6, 6, 6, 6
+    2, 2
   ],
   "clean_data": true,
   "word_embeddings": "cc.he.300.vec",
-  "mode": "pos",
   "pos_tags": [
-    "all", "noun verb adverb adjective", "noun verb", "verb"
+    "all", "content"
   ],
   "window_method": "forward",
   "output": {

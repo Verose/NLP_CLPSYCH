@@ -137,32 +137,20 @@ def plot_window_size_vs_scores_per_group(groups_scores):
         plt.legend()
         ax.set_title('Group Scores Per Window Size {}'.format(pos_tags))
 
-        plt.savefig(os.path.join(OUTPUTS_DIR, "group_scores_per_win_size_{}.png".format('_'.join(pos_tags))))
+        plt.savefig(os.path.join(OUTPUTS_DIR, "group_scores_per_win_size_{}.png".format(pos_tags)))
 
 
 def grid_plot_group(ax, i, scores, marker, c, label, xytext):
     # plot patients group
     win_sizes = [score[0] for score in scores]
-    mean_scores = [score[1] for score in scores]
-    min_scores = [score[2] for score in scores]
-    max_scores = [score[3] for score in scores]
+    scores = [score[1] for score in scores]
 
     if i == 0:
-        ax.plot(win_sizes, mean_scores, marker=marker, c=c, label=label)
-        ax.plot(win_sizes, min_scores, marker=marker, c=c)
-        ax.plot(win_sizes, max_scores, marker=marker, c=c)
+        ax.plot(win_sizes, scores, marker=marker, c=c, label=label)
     else:
-        ax.plot(win_sizes, mean_scores, marker=marker, c=c)
-        ax.plot(win_sizes, min_scores, marker=marker, c=c)
-        ax.plot(win_sizes, max_scores, marker=marker, c=c)
-    ax.annotate('mean',
-                xy=(win_sizes[i], mean_scores[i]), xycoords='data', xytext=xytext,
-                textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
-    ax.annotate('min',
-                xy=(win_sizes[i], min_scores[i]), xycoords='data', xytext=xytext,
-                textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
-    ax.annotate('max',
-                xy=(win_sizes[i], max_scores[i]), xycoords='data', xytext=xytext,
+        ax.plot(win_sizes, scores, marker=marker, c=c)
+    ax.annotate('score',
+                xy=(win_sizes[i], scores[i]), xycoords='data', xytext=xytext,
                 textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
     return win_sizes
 
