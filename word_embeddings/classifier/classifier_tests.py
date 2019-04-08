@@ -31,7 +31,7 @@ scoring = {
 }
 
 
-def classify_cv_results(X, y, model, params, test_name, debug):
+def classify_cv_results(X, y, model, params, test_name, debug, cv=5):
     """
     Used to get cross-validated results.
     :param X: features
@@ -40,9 +40,10 @@ def classify_cv_results(X, y, model, params, test_name, debug):
     :param params: parameters for GridSearchCV
     :param test_name: name of the test
     :param debug: print debug info to logger
+    :param cv: cross validation number
     :return: classifier_name, accuracy, precision, recall, f1
     """
-    gcv = GridSearchCV(model, params, cv=5, scoring=scoring, refit='accuracy', iid=False)
+    gcv = GridSearchCV(model, params, cv=cv, scoring=scoring, refit='accuracy', iid=False)
     gcv.fit(X, y)
     best_model = gcv.best_estimator_
     classifier_name = best_model.__class__.__name__
@@ -54,7 +55,7 @@ def classify_cv_results(X, y, model, params, test_name, debug):
     if debug:
         LOGGER.info("************* {}: {} *************".format(classifier_name, test_name))
         LOGGER.info("With best params: {}".format(gcv.best_params_))
-        LOGGER.info("accuracy: {}, precision: {}, recall: {}".format(accuracy, precision, recall))
+        LOGGER.info("accuracy: {}, precision: {}, recall: {}, f1: {}".format(accuracy, precision, recall, f1))
 
         if hasattr(best_model, 'feature_importances_'):
             important_features = [(X.columns[i], importance)

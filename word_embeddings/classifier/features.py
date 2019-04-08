@@ -4,7 +4,7 @@ import string
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from utils import DATA_DIR
+from word_embeddings.common.utils import DATA_DIR
 
 pos_tags_features = [
     'noun',
