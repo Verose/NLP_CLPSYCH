@@ -3,9 +3,11 @@ import os
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics.scorer import accuracy_scorer, precision_scorer, recall_scorer, f1_scorer
 from sklearn.model_selection import GridSearchCV
+from sklearn.svm import LinearSVC
+from xgboost import XGBClassifier
 
 from utils import LOGGER
 from word_embeddings.common.utils import DATA_DIR, OUTPUTS_DIR
@@ -17,10 +19,15 @@ scoring = {
     'f1': f1_scorer,
 }
 
-rf_params = {
+tree_params = {
     "n_estimators": [1, 3, 5, 10, 15, 20, 50, 100, 200],
     "max_depth": [1, 2, 3, 5, 8, 10, 20],
     "max_features": [1, None, "sqrt"]
+}
+svm_params = {
+    "loss": ['hinge', 'squared_hinge'],
+    "C": [0.5, 1.0, 10, 100, 1000],
+    "max_iter": [1000000]
 }
 
 
@@ -62,8 +69,8 @@ if __name__ == '__main__':
     X = scores.drop(columns=['Group', 'user'])
 
     # RandomForest classification
-    rf_results = classify_cv_results(X, y, RandomForestClassifier(random_state=0),
-                                     params=rf_params,
+    rf_results = classify_cv_results(X, y, RandomForestClassifier(),
+                                     params=tree_params,
                                      debug=True,
                                      cv=10)
 
@@ -71,12 +78,22 @@ if __name__ == '__main__':
     df_res = pd.DataFrame([[*rf_results[1:]]], columns=headers)
     df_res.to_csv(os.path.join(OUTPUTS_DIR, "classifier_basic_rf.csv"), index=False)
 
-    # GradientBoosting classification
-    gb_results = classify_cv_results(X, y, GradientBoostingClassifier(random_state=0),
-                                     params=rf_params,
-                                     debug=True,
-                                     cv=10)
+    # XGBClassifier classification
+    xgb_results = classify_cv_results(X, y, XGBClassifier(),
+                                      params=tree_params,
+                                      debug=True,
+                                      cv=10)
 
     headers = ['Acc.', 'Prec.', 'Recall', 'F1']
-    df_res = pd.DataFrame([[*gb_results[1:]]], columns=headers)
-    df_res.to_csv(os.path.join(OUTPUTS_DIR, "classifier_basic_gb.csv"), index=False)
+    df_res = pd.DataFrame([[*xgb_results[1:]]], columns=headers)
+    df_res.to_csv(os.path.join(OUTPUTS_DIR, "classifier_basic_xgb.csv"), index=False)
+
+    # Linear SVM classification
+    svm_results = classify_cv_results(X, y, LinearSVC(),
+                                      params=svm_params,
+                                      debug=True,
+                                      cv=10)
+
+    headers = ['Acc.', 'Prec.', 'Recall', 'F1']
+    df_res = pd.DataFrame([[*svm_results[1:]]], columns=headers)
+    df_res.to_csv(os.path.join(OUTPUTS_DIR, "classifier_basic_svm.csv"), index=False)
