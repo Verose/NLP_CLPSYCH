@@ -15,84 +15,49 @@ from word_embeddings.common.utils import pos_tags_jsons_generator
 
 
 class POSSlidingWindow:
-    def __init__(self, model, data, window_size, data_dir, pos_tags, window_method):
+    def __init__(self, model, data, window_size, data_dir, pos_tags, questions, question_minimum_length):
         self._data_dir = data_dir
         self._pos_tags_to_filter_in = 'noun verb adverb adjective' if pos_tags.lower() == 'content' else pos_tags
-        self._window_method = window_method
 
         self._model = model
         self._data = data
         self._window_size = window_size
+        self._questions = questions
+        self._question_minimum_length = question_minimum_length
         self._logger = self._setup_logger()
 
-        self._control_scores = []
-        self._patients_scores = []
-        self._control_users_to_question_scores = {}
-        self._patients_users_to_question_scores = {}
+        self._control_users_to_avg_scores = {}
+        self._patients_users_to_avg_scores = {}
         self._control_users_to_valid_words = {}
         self._patients_users_to_valid_words = {}
 
         self._answers_to_user_id_pos_data = {}
-        self._control_repetitions = []
-        self._patient_repetitions = []
-        self._control_items = []
-        self._patient_items = []
 
         self.words_without_embeddings = []
-        self._read_answers_pos_tags()
+        assert self._read_answers_pos_tags(), "No pos tags found!"
 
     def calculate_all_scores(self):
         # iterate users
-        for index, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False,
-                               desc='Users'):
+        for _, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False, desc='Users'):
             user_id = row[0]
             label = row[1]
 
             averages = self._user_avg_scores(user_id)
-            scores, repetitions, items, words = \
-                averages['scores'], averages['repetitions'], averages['items'], averages['valid_words']
-            avg_user_score = sum(scores.values()) / len(scores.values())
-            avg_repetitions = sum(repetitions.values()) / len(repetitions.values())
-            avg_items = sum(items.values()) / len(items.values())
+            scores, words = averages['avg_scores'], averages['valid_words']
 
             if label == 'control':
-                self._control_users_to_question_scores[user_id] = scores
+                self._control_users_to_avg_scores[user_id] = scores
                 self._control_users_to_valid_words[user_id] = words
-                self._control_scores += [(avg_user_score, user_id)]
-                self._control_repetitions += [(avg_repetitions, user_id)]
-                self._control_items += [(avg_items, user_id)]
             else:
-                self._patients_users_to_question_scores[user_id] = scores
+                self._patients_users_to_avg_scores[user_id] = scores
                 self._patients_users_to_valid_words[user_id] = words
-                self._patients_scores += [(avg_user_score, user_id)]
-                self._patient_repetitions += [(avg_repetitions, user_id)]
-                self._patient_items += [(avg_items, user_id)]
 
     def calculate_group_scores(self, group='control'):
-        scores = self.get_scores(group)
-        return sum(scores) / len(scores)
-
-    def calculate_repetitions_for_group(self, group='control'):
-        if group == 'control':
-            control_repetitions = [rep[0] for rep in self._control_repetitions]
-            return sum(control_repetitions) / len(control_repetitions)
-        else:
-            patient_repetitions = [rep[0] for rep in self._patient_repetitions]
-            return sum(patient_repetitions) / len(patient_repetitions)
-
-    def calculate_items_for_group(self, group='control'):
-        if group == 'control':
-            control_items = [item[0] for item in self._control_items]
-            return sum(control_items) / len(control_items)
-        else:
-            patient_items = [item[0] for item in self._patient_items]
-            return sum(patient_items) / len(patient_items)
+        scores = self.get_avg_scores(group)
+        return np.mean(scores)
 
     def _user_avg_scores(self, user_id):
-        skip = []
-        scores = {}
-        repetitions = {}
-        items = {}
+        avg_scores = {}
         valid_words = {}
 
         # iterate answers
@@ -101,79 +66,73 @@ class POSSlidingWindow:
 
             # some users didn't answer all of the questions
             if not user_pos_data['tokens']:
-                self._logger.debug('skipping empty answer for user: {}, setting with mean'.format(user_id))
-                skip += [answer_num]
+                self._logger.debug('skipping empty answer for user: {}'.format(user_id))
+                avg_scores[answer_num] = -2
                 continue
 
             ans_score = self._answer_score_by_pos_tags(user_pos_data['tokens'], user_pos_data['posTags'])
 
             if not ans_score:
-                skip += [answer_num]
+                avg_scores[answer_num] = -2
                 continue
 
-            scores[answer_num] = ans_score['scores']
-            repetitions[answer_num] = ans_score['repetitions']
-            items[answer_num] = ans_score['items']
+            avg_scores[answer_num] = ans_score['avg_scores']
             valid_words[answer_num] = ans_score['valid_words']
 
-        # fill in for missing answers
-        if skip:
-            mean = sum(scores.values()) / len(scores.values())
-            for ans in skip:
-                scores[ans] = mean
-                repetitions[ans] = 0
-                valid_words[ans] = []
-
-        return {'scores': scores, 'repetitions': repetitions, 'items': items, 'valid_words': valid_words}
+        return {'avg_scores': avg_scores, 'valid_words': valid_words}
 
     def _read_answers_pos_tags(self):
         pos_tags_generator = pos_tags_jsons_generator()
 
         for answer_num, ans_pos_tags in pos_tags_generator:
+            if answer_num not in self._questions:
+                continue
             self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
+
+        return len(self._answers_to_user_id_pos_data) > 0
 
     def _answer_score_by_pos_tags(self, answer, pos_tags):
         """
         Calculate:
-        scores - average/min/max cosine similarity of an answer using POS tags (average of window averages)
+        scores - average cosine similarity of an answer using POS tags (average of window averages)
         Cosine Similarity is calculated as an average over the answers.
         An answer is calculated by the average cosine similarity over all possible windows
-        repetitions - sum of word repetitions for an answer
-        Word repetitions are calculated as an average over the answers.
         An answer is calculated by summation over all possible windows.
-        items - sum of valid words for an answer
         Only considering “content words” - nouns, verbs, adjectives and adverbs
         'all' considers all possible pos tags.
         :return: dictionary with the required fields
         """
         valid_words = []
         valid_pos_tags = []
+        previous_valid_word = ''
 
         # get a list of valid words and their pos_tags
         for i, (word, pos_tag) in enumerate(zip(answer, pos_tags)):
             if self._should_skip(word, pos_tag):
                 continue
+            # skip duplicate words
+            if word == previous_valid_word:
+                continue
             valid_words += [word]
             valid_pos_tags += [pos_tag]
+            previous_valid_word = word
 
         if not valid_words:
             return None
+        # skip sentences too short
+        if len(valid_words) < self._question_minimum_length:
+            return None
 
-        if self._window_method == 'forward':
-            repetitions, scores = self._answer_scores_forward_window(valid_words)
-        else:
-            repetitions, scores = self._avg_answer_scores_surrounding_window(valid_words)
+        scores = self._answer_scores_forward_window(valid_words)
 
-        ans_scores = None
+        ans_avg_scores = None
         if scores:
             ret_score = sum(scores) / len(scores)
-            ans_scores = {'scores': ret_score, 'repetitions': repetitions, 'items': len(valid_words),
-                          'valid_words': valid_words}
-        return ans_scores
+            ans_avg_scores = {'avg_scores': ret_score, 'valid_words': valid_words}
+        return ans_avg_scores
 
     def _answer_scores_forward_window(self, valid_words):
         scores = []
-        repetitions = 0
 
         for i, word in enumerate(valid_words):
             if i + self._window_size >= len(valid_words):
@@ -188,43 +147,10 @@ class POSSlidingWindow:
                 context_vector = self._model[context]
                 win_scores.append(cosine_similarity([word_vector], [context_vector])[0][0])
 
-                if word == context:
-                    repetitions += 1
-
             # average for window
             score = np.mean(win_scores)
             scores += [score]
-        return repetitions, scores
-
-    def _avg_answer_scores_surrounding_window(self, valid_words):
-        scores = []
-        repetitions = 0
-
-        for i, word in enumerate(valid_words):
-            if i - self._window_size < 0:
-                continue
-            if i + self._window_size >= len(valid_words):
-                break
-
-            word_vector = self._model[word]
-            score = 0
-
-            # calculate cosine similarity for surrounding window
-            for dist in range(i - self._window_size, i + self._window_size + 1):
-                if dist == i:
-                    continue
-
-                context = valid_words[dist]
-                context_vector = self._model[context]
-                score += cosine_similarity([word_vector], [context_vector])[0][0]
-
-                if word == context:
-                    repetitions += 1
-
-            # average for window
-            score /= (2 * self._window_size)
-            scores += [score]
-        return repetitions, scores
+        return scores
 
     def _should_skip(self, word, pos_tag):
         """
@@ -259,13 +185,21 @@ class POSSlidingWindow:
         logger.addHandler(console_handler)
         return logger
 
-    def get_scores(self, group='control'):
-        group = self._control_scores if group == 'control' else self._patients_scores
-        return [score[0] for score in group]
+    def get_user_to_avg_scores(self, group='control'):
+        group = self._control_users_to_avg_scores if group == 'control' else self._patients_users_to_avg_scores
+        averages = {}
+        for user, user_scores in group.items():
+            averages[user] = np.mean([score for score in user_scores.values() if score > -2])
+        return averages
+
+    def get_avg_scores(self, group='control'):
+        group = self._control_users_to_avg_scores if group == 'control' else self._patients_users_to_avg_scores
+        averages = [np.mean([score for score in user_scores.values() if score > -2]) for user_scores in group.values()]
+        averages = [avg for avg in averages if not np.isnan(avg)]
+        return averages
 
     def get_user_to_question_scores(self, group='control'):
-        return self._control_users_to_question_scores if group == 'control' \
-            else self._patients_users_to_question_scores
+        return self._control_users_to_avg_scores if group == 'control' else self._patients_users_to_avg_scores
 
     def get_user_to_question_valid_words(self, group='control'):
         return self._control_users_to_valid_words if group == 'control' else self._patients_users_to_valid_words
@@ -275,8 +209,8 @@ class POSSlidingWindow:
         Performs t-test on the average cos-sim score of each user
         :return:
         """
-        control_scores = self.get_scores('control')
-        patient_scores = self.get_scores('patients')
+        control_scores = self.get_avg_scores('control')
+        patient_scores = self.get_avg_scores('patients')
         ttest = stats.ttest_ind(control_scores, patient_scores)
         return ttest
 

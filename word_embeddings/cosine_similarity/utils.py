@@ -25,19 +25,6 @@ def get_medical_data(clean_data=False):
     return medical_data
 
 
-def plot_groups_histograms(control_scores_by_question,
-                           patient_scores_by_question,
-                           win_size,
-                           header,
-                           output_dir):
-    plt.clf()
-    plt.hist(control_scores_by_question, label='control')
-    plt.hist(patient_scores_by_question, label='patients')
-    plt.legend()
-    plt.title('Cos-Sim Histogram Per-Question For Win: {} with {}'.format(win_size, header))
-    plt.savefig(os.path.join(output_dir, "cos_sim_per_question_histogram_win{}_{}.png".format(win_size, header)))
-
-
 def plot_groups_scores_by_question(control_scores_by_question,
                                    patient_scores_by_question,
                                    win_size,
@@ -84,12 +71,30 @@ def ttest_results_to_csv(tests, logger, unique_name=''):
     keys = ['header: {}, window: {}'.format(test.header, test.window_size) for test in tests]
     dfs = pd.concat(dfs, axis=1, keys=keys)
     dfs.index += 1
-    dfs.insert(0, 'question', range(1, len(tests[0].questions_list) + 1))
+    questions = [a.question_num for a in tests[0].questions_list]
+    dfs.insert(0, 'question', questions)
     logger.debug(dfs)
     dfs.to_csv(os.path.join(OUTPUTS_DIR, "t-test_results{}.csv".format(unique_name)), index=False)
 
 
-def cossim_scores_to_csv(tests, logger, unique_name=''):
+def cossim_scores_per_user_to_csv(users_to_scores, pos_tags):
+    win_sizes = []
+    dfs = None
+
+    for win_size, control_scores, patients_scores in users_to_scores:
+        control_items = [(user, score, 'control') for user, score in control_scores.items()]
+        patients_items = [(user, score, 'patients') for user, score in patients_scores.items()]
+        df = pd.DataFrame(control_items + patients_items, columns=['user', 'Window_{}'.format(win_size), 'Group'])
+        dfs = dfs.merge(df, on=['user', 'Group']) if dfs is not None else df
+        win_sizes.append(win_size)
+
+    rearrange = ['user'] + ['Window_{}'.format(win_size) for win_size in win_sizes] + ['Group']
+    dfs = dfs[rearrange]
+    dfs.to_csv(os.path.join(OUTPUTS_DIR, "scores_{}.csv".format(pos_tags)), index=False)
+    pass
+
+
+def cossim_scores_per_question_to_csv(tests, logger, unique_name=''):
     pd.set_option('display.max_columns', None)
     pd.set_option('display.expand_frame_repr', False)
     pd.set_option('max_colwidth', -1)
@@ -112,47 +117,44 @@ def cossim_scores_to_csv(tests, logger, unique_name=''):
     dfs.to_csv(os.path.join(OUTPUTS_DIR, "cossim_results{}.csv".format(unique_name)), index=False)
 
 
-def plot_window_size_vs_scores_per_group(groups_scores):
+def plot_word_categories_to_coherence(groups_scores, ttest_scores, pos_tags):
     """
-    Plots a figure for every word category set (e.g. all, content words, noun-verb, verbs) where:
-    win_sizes axis: window sizes
-    mean_scores axis: average cosine sim
-    plot two curves: one for patients and one for control.
-    :param groups_scores: dictionary from pos tags tests to control/patients tuples of (win sizes, scores_list)
+    For given word category set (e.g. all words, content words):
+    x axis: window sizes, y axis: average cosine sim
+    plots two curves: one for patients and one for control.
+    :param groups_scores: dictionary from control/patients to tuples of (win sizes, scores_list)
+    :param ttest_scores:
+    :param pos_tags: the pos tags word category currently checked
     :return: nothing
     """
+    plt.clf()
+    fig, ax = plt.subplots()
+    control_scores = groups_scores["control"]
+    patients_scores = groups_scores["patients"]
 
-    for i, (pos_tags, groups) in enumerate(groups_scores.items()):
-        plt.clf()
-        fig, ax = plt.subplots()
-        control_scores = groups["control"]
-        patients_scores = groups["patients"]
+    # plot control group
+    win_sizes = [size for size, scores in control_scores]
+    cont_avg_scores = [scores for size, scores in control_scores]
+    ax.plot(win_sizes, cont_avg_scores, marker='*', c='blue', label='control')
 
-        win_sizes = grid_plot_group(ax, i, control_scores, marker='*', c='red', label='control', xytext=(-20, 20))
-        win_sizes = grid_plot_group(ax, i, patients_scores, marker='.', c='blue', label='patients', xytext=(-20, -20))
-
-        ax.set_xlabel('window sizes')
-        ax.set_xticks(win_sizes)
-        ax.set_ylabel('avg cos-sim score')
-        plt.legend()
-        ax.set_title('Group Scores Per Window Size {}'.format(pos_tags))
-
-        plt.savefig(os.path.join(OUTPUTS_DIR, "group_scores_per_win_size_{}.png".format(pos_tags)))
-
-
-def grid_plot_group(ax, i, scores, marker, c, label, xytext):
     # plot patients group
-    win_sizes = [score[0] for score in scores]
-    scores = [score[1] for score in scores]
+    win_sizes = [size for size, scores in patients_scores]
+    pat_avg_scores = [scores for size, scores in patients_scores]
+    ax.plot(win_sizes, pat_avg_scores, marker='.', c='red', label='patients')
 
-    if i == 0:
-        ax.plot(win_sizes, scores, marker=marker, c=c, label=label)
-    else:
-        ax.plot(win_sizes, scores, marker=marker, c=c)
-    ax.annotate('score',
-                xy=(win_sizes[i], scores[i]), xycoords='data', xytext=xytext,
-                textcoords='offset points', arrowprops=dict(arrowstyle="->"), size=8)
-    return win_sizes
+    ax.set_xlabel('k')
+    ax.set_xticks(win_sizes)
+    ax.set_ylabel('Coherence Score')
+    plt.legend()
+    ax.set_title('{} Words'.format(pos_tags))
+
+    plt.savefig(os.path.join(OUTPUTS_DIR, "{}_words_to_coherence.png".format(pos_tags)))
+
+    tstatistic = [tstatistic for _, tstatistic, pvalue in ttest_scores]
+    pvalue = [pvalue for _, tstatistic, pvalue in ttest_scores]
+    data = {'k': win_sizes, 'Control': cont_avg_scores, 'Patients': pat_avg_scores, 't': tstatistic, 'p': pvalue}
+    df = pd.DataFrame(data)
+    df.to_csv(os.path.join(OUTPUTS_DIR, "{}_words_to_coherence.csv".format(pos_tags)), index=False)
 
 
 def plot_grid_search(grid_search, output_dir):
