@@ -28,6 +28,12 @@ def remove_depressed(df, removed):
     return res
 
 
+def get_depressed(df):
+    # only keep control and depressed groups
+    res = df[df['diagnosys_group'].isin(['control', 'depression'])]
+    return res
+
+
 # def get_vector_repr_of_word(model, word):
 #     try:
 #         return model[word]

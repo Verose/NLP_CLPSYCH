@@ -4,7 +4,7 @@ import string
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from word_embeddings.common.utils import remove_females, remove_depressed, DATA_DIR, OUTPUTS_DIR
+from word_embeddings.common.utils import remove_females, get_depressed, DATA_DIR, OUTPUTS_DIR
 
 
 def get_medical_data(clean_data=False):
@@ -14,7 +14,8 @@ def get_medical_data(clean_data=False):
         # check features csv for gender and diagnosis group
         df_res = pd.read_csv(os.path.join(DATA_DIR, 'features_all.csv'))
         df_res = remove_females(df_res, [])
-        df_res = remove_depressed(df_res, [])
+        # df_res = remove_depressed(df_res, [])
+        df_res = get_depressed(df_res)
         users = df_res['id'].values
         medical_data = medical_data[medical_data['id'].isin(users)]
 
