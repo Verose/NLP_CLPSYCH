@@ -6,6 +6,7 @@ from datetime import datetime
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 
+import nltk
 import numpy as np
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
@@ -17,10 +18,19 @@ from word_embeddings.common.utils import pos_tags_jsons_generator
 class POSSlidingWindow:
     def __init__(self, model, data, window_size, data_dir, pos_tags, questions, question_minimum_length):
         self._data_dir = data_dir
-        self._pos_tags_to_filter_in = 'noun verb adverb adjective' if pos_tags.lower() == 'content' else pos_tags
+
+        if isinstance(data, list):
+            self._pos_tags_to_filter_in = \
+                'noun verb adverb adjective'.split() if pos_tags.lower() == 'content' else pos_tags.split()
+        else:
+            self._pos_tags_to_filter_in = \
+                'NN NNP NNPS NNS' \
+                'JJ JJR JJS'  \
+                'VB VBD VBG VBN VBP VBZ' + \
+                'RB RBR RBS RP'.split() if pos_tags.lower() == 'content' else pos_tags.split()
 
         self._model = model
-        self._data = data
+        self._data = data  # list of dictionaries with 'id', 'label' keys, or generator for this
         self._window_size = window_size
         self._questions = questions
         self._question_minimum_length = question_minimum_length
@@ -34,15 +44,16 @@ class POSSlidingWindow:
         self._answers_to_user_id_pos_data = {}
 
         self.words_without_embeddings = []
-        assert self._read_answers_pos_tags(), "No pos tags found!"
 
     def calculate_all_scores(self):
         # iterate users
-        for _, row in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False, desc='Users'):
-            user_id = row[0]
-            label = row[1]
+        data_length = len(self._data) if isinstance(self._data, list) else None
 
-            averages = self._user_avg_scores(user_id)
+        for data in tqdm(self._data, file=sys.stdout, total=data_length, leave=False, desc='Users'):
+            user_id = data['id']
+            label = data['label']
+
+            averages = self._user_avg_scores(data)
             scores, words = averages['avg_scores'], averages['valid_words']
 
             if label == 'control':
@@ -56,17 +67,15 @@ class POSSlidingWindow:
         scores = self.get_avg_scores(group)
         return np.mean(scores)
 
-    def _user_avg_scores(self, user_id):
+    def _user_avg_scores(self, data):
         avg_scores = {}
         valid_words = {}
 
         # iterate answers
-        for answer_num, users_pos_data in sorted(self._answers_to_user_id_pos_data.items()):
-            user_pos_data = users_pos_data[user_id]
-
+        for answer_num, user_pos_data in self._answers_pos_tags_generator(data):
             # some users didn't answer all of the questions
             if not user_pos_data['tokens']:
-                self._logger.debug('skipping empty answer for user: {}'.format(user_id))
+                self._logger.debug('skipping empty answer for user: {}'.format(data['id']))
                 avg_scores[answer_num] = -2
                 continue
 
@@ -85,11 +94,37 @@ class POSSlidingWindow:
         pos_tags_generator = pos_tags_jsons_generator()
 
         for answer_num, ans_pos_tags in pos_tags_generator:
-            if answer_num not in self._questions:
+            if self._questions is not None and answer_num not in self._questions:
                 continue
             self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
 
         return len(self._answers_to_user_id_pos_data) > 0
+
+    def _answers_pos_tags_generator(self, data):
+        """
+        Generator for pos tags.
+        :param data: dictionary with id, label, and posts (required for english dataset)
+        For the hebrew dataset, the pos tags data is read from json files.
+        For the english dataset, the pos tags are calculated from the posts.
+        :return: (answer number, dictionary with 'tokens' list, and 'posTags' list)
+        """
+        if 'posts' not in data:
+            if len(self._answers_to_user_id_pos_data) == 0:
+                assert self._read_answers_pos_tags(), "No pos tags found!"
+
+            user_id = data['id']
+            for answer_num, users_pos_data in sorted(self._answers_to_user_id_pos_data.items()):
+                user_pos_data = users_pos_data[user_id]
+                yield answer_num, user_pos_data
+        else:
+            for answer_num, id_post in enumerate(data['posts'], 1):
+                post = id_post[1]
+                post = post.translate(str.maketrans('', '', string.punctuation))  # #$%&@
+                tokens = nltk.word_tokenize(post)
+                pos_tags = nltk.pos_tag(tokens)
+                user_pos_data = {'tokens': [item[0] for item in pos_tags],
+                                 'posTags': [item[1] for item in pos_tags]}
+                yield answer_num, user_pos_data
 
     def _answer_score_by_pos_tags(self, answer, pos_tags):
         """
@@ -103,7 +138,6 @@ class POSSlidingWindow:
         :return: dictionary with the required fields
         """
         valid_words = []
-        valid_pos_tags = []
         previous_valid_word = ''
 
         # get a list of valid words and their pos_tags
@@ -114,7 +148,6 @@ class POSSlidingWindow:
             if word == previous_valid_word:
                 continue
             valid_words += [word]
-            valid_pos_tags += [pos_tag]
             previous_valid_word = word
 
         if not valid_words:
@@ -166,7 +199,7 @@ class POSSlidingWindow:
             self.words_without_embeddings.append(word)
             return True
         if pos_tag not in self._pos_tags_to_filter_in:
-            if self._pos_tags_to_filter_in.lower() == 'all':
+            if 'all' in self._pos_tags_to_filter_in:
                 return False
             return True
         return False

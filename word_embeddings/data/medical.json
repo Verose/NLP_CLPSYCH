@@ -6,6 +6,7 @@
   "question_minimum_length": 50,
   "clean_data": true,
   "word_embeddings": "cc.he.300.vec",
+  "word_embeddings_rsdd": "cc.en.300",
   "pos_tags": [
     "all", "content"
   ],
