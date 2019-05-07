@@ -8,7 +8,7 @@
   "word_embeddings": "cc.he.300.vec",
   "word_embeddings_rsdd": "cc.en.300",
   "pos_tags": [
-    "all", "content"
+    "All", "Content"
   ],
   "output": {
     "plot": false,

@@ -21,13 +21,13 @@ class POSSlidingWindow:
 
         if isinstance(data, list):
             self._pos_tags_to_filter_in = \
-                'noun verb adverb adjective'.split() if pos_tags.lower() == 'content' else pos_tags.split()
+                'noun verb adverb adjective'.split() if pos_tags.lower() == 'content' else pos_tags.lower().split()
         else:
             self._pos_tags_to_filter_in = \
                 'NN NNP NNPS NNS' \
                 'JJ JJR JJS'  \
-                'VB VBD VBG VBN VBP VBZ' + \
-                'RB RBR RBS RP'.split() if pos_tags.lower() == 'content' else pos_tags.split()
+                'VB VBD VBG VBN VBP VBZ' \
+                'RB RBR RBS RP'.split() if pos_tags.lower() == 'content' else pos_tags.lower().split()
 
         self._model = model
         self._data = data  # list of dictionaries with 'id', 'label' keys, or generator for this
