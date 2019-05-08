@@ -1,4 +1,3 @@
-import json
 import os
 import string
 
@@ -27,17 +26,7 @@ def get_medical_data(clean_data=False):
 
 
 def get_rsdd_data():
-    id_num = 1
-
-    with open(os.path.join(DATA_DIR, 'rsdd_posts', 'training'), 'r') as f:
-        for line in f:
-            item = json.loads(line)
-            user_info = item[0]
-            label = user_info['label']
-            posts = user_info['posts']
-
-            yield {'id': id_num, 'label': label, 'posts': posts}
-            id_num += 1
+    return pd.read_csv(os.path.join(DATA_DIR, 'all_data_rsdd.csv'))
 
 
 def plot_groups_scores_by_question(control_scores_by_question,

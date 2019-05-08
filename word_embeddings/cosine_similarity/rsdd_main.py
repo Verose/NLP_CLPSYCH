@@ -1,3 +1,4 @@
+import datetime
 import logging
 import sys
 
@@ -27,7 +28,7 @@ def cosine_similarity_several_window_sizes(window_sizes):
                             desc='Window Sizes'):
         pos_tags = conf['pos_tags'][i]
         cosine_calcs = POSSlidingWindow(model, data, win_size, DATA_DIR, pos_tags,
-                                        None, 10)
+                                        None, 10, True)
                                         # conf['questions'], conf['question_minimum_length'])
         cosine_calcs.calculate_all_scores()
 
@@ -64,10 +65,10 @@ def cosine_similarity_several_window_sizes(window_sizes):
 
 
 if __name__ == '__main__':
+    LOGGER.info('Starting: ' + str(datetime.datetime.now()))
     conf = read_conf()
     data = get_rsdd_data()
-
-    # model = load_model(get_rsdd_words(), conf['word_embeddings_rsdd'])
+    data = data.head(2_000)  # TODO only first 2K users
     model = FastText.load_fasttext_format(os.path.join(DATA_DIR, 'ft_pretrained', conf["word_embeddings_rsdd"]))
 
     pos_tags_list = conf['pos_tags']
@@ -83,3 +84,4 @@ if __name__ == '__main__':
         }
         ttest_scores = grid_search_window["ttest_scores"]
         plot_word_categories_to_coherence(groups_scores, ttest_scores, pos_tag)
+    LOGGER.info('Finished: ' + str(datetime.datetime.now()))

@@ -108,7 +108,6 @@ if __name__ == '__main__':
     conf = read_conf()
     data = get_medical_data(clean_data=conf["clean_data"])
     data = data[['id', 'label']]
-    data = data.to_dict('records')
     model = load_model(get_words(), conf['word_embeddings'])
 
     if conf['output']['grid_search']:

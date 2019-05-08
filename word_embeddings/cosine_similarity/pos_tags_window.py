@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import string
@@ -6,7 +7,6 @@ from datetime import datetime
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 
-import nltk
 import numpy as np
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
@@ -16,10 +16,10 @@ from word_embeddings.common.utils import pos_tags_jsons_generator
 
 
 class POSSlidingWindow:
-    def __init__(self, model, data, window_size, data_dir, pos_tags, questions, question_minimum_length):
+    def __init__(self, model, data, window_size, data_dir, pos_tags, questions, question_minimum_length, is_rsdd=False):
         self._data_dir = data_dir
 
-        if isinstance(data, list):
+        if not is_rsdd:
             self._pos_tags_to_filter_in = \
                 'noun verb adverb adjective'.split() if pos_tags.lower() == 'content' else pos_tags.lower().split()
         else:
@@ -30,10 +30,11 @@ class POSSlidingWindow:
                 'RB RBR RBS RP'.split() if pos_tags.lower() == 'content' else pos_tags.lower().split()
 
         self._model = model
-        self._data = data  # list of dictionaries with 'id', 'label' keys, or generator for this
+        self._data = data
         self._window_size = window_size
         self._questions = questions
         self._question_minimum_length = question_minimum_length
+        self._is_rsdd = is_rsdd
         self._logger = self._setup_logger()
 
         self._control_users_to_avg_scores = {}
@@ -47,13 +48,11 @@ class POSSlidingWindow:
 
     def calculate_all_scores(self):
         # iterate users
-        data_length = len(self._data) if isinstance(self._data, list) else None
-
-        for data in tqdm(self._data, file=sys.stdout, total=data_length, leave=False, desc='Users'):
+        for _, data in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False, desc='Users'):
             user_id = data['id']
             label = data['label']
 
-            averages = self._user_avg_scores(data)
+            averages = self._user_avg_scores(user_id)
             scores, words = averages['avg_scores'], averages['valid_words']
 
             if label == 'control':
@@ -67,15 +66,15 @@ class POSSlidingWindow:
         scores = self.get_avg_scores(group)
         return np.mean(scores)
 
-    def _user_avg_scores(self, data):
+    def _user_avg_scores(self, user_id):
         avg_scores = {}
         valid_words = {}
 
         # iterate answers
-        for answer_num, user_pos_data in self._answers_pos_tags_generator(data):
+        for answer_num, user_pos_data in self._answers_pos_tags_generator(user_id):
             # some users didn't answer all of the questions
             if not user_pos_data['tokens']:
-                self._logger.debug('skipping empty answer for user: {}'.format(data['id']))
+                self._logger.debug('skipping empty answer for user: {}'.format(user_id))
                 avg_scores[answer_num] = -2
                 continue
 
@@ -100,31 +99,32 @@ class POSSlidingWindow:
 
         return len(self._answers_to_user_id_pos_data) > 0
 
-    def _answers_pos_tags_generator(self, data):
+    def _answers_pos_tags_generator(self, user_id):
         """
         Generator for pos tags.
-        :param data: dictionary with id, label, and posts (required for english dataset)
+        :param user_id: user id
         For the hebrew dataset, the pos tags data is read from json files.
         For the english dataset, the pos tags are calculated from the posts.
         :return: (answer number, dictionary with 'tokens' list, and 'posTags' list)
         """
-        if 'posts' not in data:
+        if not self._is_rsdd:
             if len(self._answers_to_user_id_pos_data) == 0:
                 assert self._read_answers_pos_tags(), "No pos tags found!"
 
-            user_id = data['id']
             for answer_num, users_pos_data in sorted(self._answers_to_user_id_pos_data.items()):
                 user_pos_data = users_pos_data[user_id]
                 yield answer_num, user_pos_data
         else:
-            for answer_num, id_post in enumerate(data['posts'], 1):
-                post = id_post[1]
-                post = post.translate(str.maketrans('', '', string.punctuation))  # #$%&@
-                tokens = nltk.word_tokenize(post)
-                pos_tags = nltk.pos_tag(tokens)
-                user_pos_data = {'tokens': [item[0] for item in pos_tags],
-                                 'posTags': [item[1] for item in pos_tags]}
-                yield answer_num, user_pos_data
+            with open(os.path.join(self._data_dir, 'pos_tags_rsdd', '{}.json'.format(user_id)), encoding='utf-8') as f:
+                ans_pos_tags = json.load(f)
+                tokens_list = ans_pos_tags['tokens']
+                pos_tags_list = ans_pos_tags['posTags']
+
+                for answer_num, (tokens, pos_tags) in enumerate(zip(tokens_list, pos_tags_list), 1):
+                    if answer_num > 500:  # TODO hard coded limit for posts
+                        break
+
+                    yield answer_num, {'tokens': tokens, 'posTags': pos_tags}
 
     def _answer_score_by_pos_tags(self, answer, pos_tags):
         """
