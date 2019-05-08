@@ -6,11 +6,11 @@ import sys
 from datetime import datetime
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
+from multiprocessing import Pool
 
 import numpy as np
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
-from tqdm import tqdm
 
 from word_embeddings.common.utils import pos_tags_jsons_generator
 
@@ -48,19 +48,30 @@ class POSSlidingWindow:
 
     def calculate_all_scores(self):
         # iterate users
-        for _, data in tqdm(self._data.iterrows(), file=sys.stdout, total=len(self._data), leave=False, desc='Users'):
-            user_id = data['id']
-            label = data['label']
+        pool = Pool(processes=8)
+        results = pool.map(self._calc_scores_per_user, self._data.to_dict('records'))
+        pool.close()
+        pool.join()
 
-            averages = self._user_avg_scores(user_id)
-            scores, words = averages['avg_scores'], averages['valid_words']
+        for user_id, label, scores, words in results:
+            self._update_users_data(user_id, label, scores, words)
 
-            if label == 'control':
-                self._control_users_to_avg_scores[user_id] = scores
-                self._control_users_to_valid_words[user_id] = words
-            else:
-                self._patients_users_to_avg_scores[user_id] = scores
-                self._patients_users_to_valid_words[user_id] = words
+    def _calc_scores_per_user(self, data):
+        user_id = data['id']
+        label = data['label']
+
+        averages = self._user_avg_scores(user_id)
+        scores, words = averages['avg_scores'], averages['valid_words']
+
+        return user_id, label, scores, words
+
+    def _update_users_data(self, user_id, label, scores, words):
+        if label == 'control':
+            self._control_users_to_avg_scores[user_id] = scores
+            self._control_users_to_valid_words[user_id] = words
+        else:
+            self._patients_users_to_avg_scores[user_id] = scores
+            self._patients_users_to_valid_words[user_id] = words
 
     def calculate_group_scores(self, group='control'):
         scores = self.get_avg_scores(group)
