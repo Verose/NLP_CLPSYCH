@@ -31,32 +31,48 @@ def remove_depressed(df, removed):
     return res
 
 
-def get_vector_for_word(words):
-    headers = {
-        'Content-Type': 'application/json',
-    }
-    data = {"words": words}
-    data = json.dumps(data)
+def get_vector_for_word(model, words):
+    vectors = []
 
-    response = requests.get(
-        'http://{}:5000/word_embeddings/vectors'.format(HOST), data=data, headers=headers, timeout=8
-    )
-    result = json.loads(response.text)
-    return result
+    for word in words:
+        vectors.append(model[word].tolist())
+
+    return vectors
+
+# def get_vector_for_word(words):
+    # headers = {
+    #     'Content-Type': 'application/json',
+    # }
+    # data = {"words": words}
+    # data = json.dumps(data)
+    #
+    # response = requests.get(
+    #     'http://{}:5000/word_embeddings/vectors'.format(HOST), data=data, headers=headers, timeout=8
+    # )
+    # result = json.loads(response.text)
+    # return result
 
 
-def get_words_in_model(words):
-    headers = {
-        'Content-Type': 'application/json',
-    }
-    data = {"words": words}
-    data = json.dumps(data)
+def get_words_in_model(model, words):
+    result_dict = {}
 
-    response = requests.get(
-        'http://{}:5000/word_embeddings/is_in'.format(HOST), data=data, headers=headers, timeout=8
-    )
-    result = json.loads(response.text)
-    return result
+    for word in words:
+        result_dict[word] = word in model
+
+    return result_dict
+
+# def get_words_in_model(words):
+#     headers = {
+#         'Content-Type': 'application/json',
+#     }
+#     data = {"words": words}
+#     data = json.dumps(data)
+#
+#     response = requests.get(
+#         'http://{}:5000/word_embeddings/is_in'.format(HOST), data=data, headers=headers, timeout=8
+#     )
+#     result = json.loads(response.text)
+#     return result
 
 
 def load_model(words, word_embeddings_file):

@@ -17,8 +17,9 @@ def init(args):
 
 
 class POSSlidingWindow:
-    def __init__(self, data, window_size, data_dir, pos_tags, questions, question_minimum_length, is_rsdd=False):
+    def __init__(self, model, data, window_size, data_dir, pos_tags, questions, question_minimum_length, is_rsdd=False):
         self._data_dir = data_dir
+        self._model = model
 
         if not is_rsdd:
             self._pos_tags_to_filter_in = \
@@ -78,7 +79,7 @@ class POSSlidingWindow:
 
     def _user_avg_score(self, user_id):
         sum_scores = 0
-        counter = 0
+        scores_counter = 0
 
         # iterate answers
         for answer_num, user_pos_data in self._answers_pos_tags_generator(user_id):
@@ -92,9 +93,9 @@ class POSSlidingWindow:
                 continue
 
             sum_scores += ans_score
-            counter += 1
+            scores_counter += 1
 
-        return sum_scores/counter if counter > 0 else np.nan
+        return sum_scores/scores_counter if scores_counter > 0 else np.nan
 
     def _read_answers_pos_tags(self):
         pos_tags_generator = pos_tags_jsons_generator()
@@ -146,7 +147,7 @@ class POSSlidingWindow:
         """
         valid_words = []
         previous_valid_word = ''
-        words_in_model_dict = get_words_in_model(answer)
+        words_in_model_dict = get_words_in_model(self._model, answer)
 
         # get a list of valid words and their pos_tags
         for i, (word, pos_tag) in enumerate(zip(answer, pos_tags)):
@@ -176,7 +177,7 @@ class POSSlidingWindow:
     def _answer_scores_forward_window(self, valid_words):
         scores = []
         num_vectors = len(valid_words)
-        valid_vectors = get_vector_for_word(valid_words)
+        valid_vectors = get_vector_for_word(self._model, valid_words)
 
         for i, word_vector in enumerate(valid_vectors):
             if i + self._window_size >= num_vectors:

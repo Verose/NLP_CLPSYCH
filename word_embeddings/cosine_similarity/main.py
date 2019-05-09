@@ -3,7 +3,7 @@ import sys
 
 from tqdm import tqdm
 
-from word_embeddings.common.utils import read_conf
+from word_embeddings.common.utils import read_conf, load_model, get_words
 from word_embeddings.cosine_similarity.pos_tags_window import POSSlidingWindow
 from word_embeddings.cosine_similarity.utils import *
 
@@ -24,7 +24,7 @@ def cosine_similarity_several_window_sizes(window_sizes):
     for i, win_size in tqdm(enumerate(window_sizes), file=sys.stdout, total=len(window_sizes), leave=False,
                             desc='Window Sizes'):
         pos_tags = conf['pos_tags'][i]
-        cosine_calcs = POSSlidingWindow(data, win_size, DATA_DIR, pos_tags, conf['questions'],
+        cosine_calcs = POSSlidingWindow(model, data, win_size, DATA_DIR, pos_tags, conf['questions'],
                                         conf['question_minimum_length'])
         cosine_calcs.calculate_all_scores()
 
@@ -43,9 +43,6 @@ def cosine_similarity_several_window_sizes(window_sizes):
         ttest_scores_gs.append((win_size, tstatistic, pvalue))
 
         LOGGER.info('Showing results using POS tags: {}'.format(pos_tags))
-
-        words_without_embeddings = set(cosine_calcs.words_without_embeddings)
-        LOGGER.info('Words in corpus without FastText word embeddings: {}'.format(words_without_embeddings))
         LOGGER.info('*************************************')
 
     ret_val = {
@@ -62,6 +59,7 @@ if __name__ == '__main__':
     conf = read_conf()
     data = get_medical_data(clean_data=conf["clean_data"])
     data = data[['id', 'label']]
+    model = load_model(get_words(), conf['word_embeddings'])
 
     if conf['output']['grid_search']:
         pos_tags_list = conf['pos_tags']
