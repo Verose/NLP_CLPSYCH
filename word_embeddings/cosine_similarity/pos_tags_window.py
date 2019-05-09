@@ -12,11 +12,11 @@ import numpy as np
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
-from word_embeddings.common.utils import pos_tags_jsons_generator
+from word_embeddings.common.utils import pos_tags_jsons_generator, get_vector_repr_of_word
 
 
 class POSSlidingWindow:
-    def __init__(self, model, data, window_size, data_dir, pos_tags, questions, question_minimum_length, is_rsdd=False):
+    def __init__(self, data, window_size, data_dir, pos_tags, questions, question_minimum_length, is_rsdd=False):
         self._data_dir = data_dir
 
         if not is_rsdd:
@@ -29,18 +29,15 @@ class POSSlidingWindow:
                 'VB VBD VBG VBN VBP VBZ' \
                 'RB RBR RBS RP'.split() if pos_tags.lower() == 'content' else pos_tags.lower().split()
 
-        self._model = model
-        self._data = data
+        self._data = data.to_dict('records')
         self._window_size = window_size
         self._questions = questions
         self._question_minimum_length = question_minimum_length
         self._is_rsdd = is_rsdd
         self._logger = self._setup_logger()
 
-        self._control_users_to_avg_scores = {}
-        self._patients_users_to_avg_scores = {}
-        self._control_users_to_valid_words = {}
-        self._patients_users_to_valid_words = {}
+        self._control_users_to_agg_score = {}
+        self._patients_users_to_agg_score = {}
 
         self._answers_to_user_id_pos_data = {}
 
@@ -48,57 +45,52 @@ class POSSlidingWindow:
 
     def calculate_all_scores(self):
         # iterate users
-        pool = Pool(processes=8)
-        results = pool.map(self._calc_scores_per_user, self._data.to_dict('records'))
+        pool = Pool(processes=4)
+        results = pool.map(self._calc_scores_per_user, self._data)
         pool.close()
         pool.join()
 
-        for user_id, label, scores, words in results:
-            self._update_users_data(user_id, label, scores, words)
+        for user_id, label, score in results:
+            self._update_users_data(user_id, label, score)
 
     def _calc_scores_per_user(self, data):
         user_id = data['id']
         label = data['label']
 
-        averages = self._user_avg_scores(user_id)
-        scores, words = averages['avg_scores'], averages['valid_words']
+        score = self._user_avg_score(user_id)
 
-        return user_id, label, scores, words
+        return user_id, label, score
 
-    def _update_users_data(self, user_id, label, scores, words):
+    def _update_users_data(self, user_id, label, score):
         if label == 'control':
-            self._control_users_to_avg_scores[user_id] = scores
-            self._control_users_to_valid_words[user_id] = words
+            self._control_users_to_agg_score[user_id] = score
         else:
-            self._patients_users_to_avg_scores[user_id] = scores
-            self._patients_users_to_valid_words[user_id] = words
+            self._patients_users_to_agg_score[user_id] = score
 
     def calculate_group_scores(self, group='control'):
         scores = self.get_avg_scores(group)
         return np.mean(scores)
 
-    def _user_avg_scores(self, user_id):
-        avg_scores = {}
-        valid_words = {}
+    def _user_avg_score(self, user_id):
+        sum_scores = 0
+        counter = 0
 
         # iterate answers
         for answer_num, user_pos_data in self._answers_pos_tags_generator(user_id):
             # some users didn't answer all of the questions
             if not user_pos_data['tokens']:
                 self._logger.debug('skipping empty answer for user: {}'.format(user_id))
-                avg_scores[answer_num] = -2
                 continue
 
             ans_score = self._answer_score_by_pos_tags(user_pos_data['tokens'], user_pos_data['posTags'])
 
             if not ans_score:
-                avg_scores[answer_num] = -2
                 continue
 
-            avg_scores[answer_num] = ans_score['avg_scores']
-            valid_words[answer_num] = ans_score['valid_words']
+            sum_scores += ans_score
+            counter += 1
 
-        return {'avg_scores': avg_scores, 'valid_words': valid_words}
+        return sum_scores/counter if counter > 0 else np.nan
 
     def _read_answers_pos_tags(self):
         pos_tags_generator = pos_tags_jsons_generator()
@@ -171,24 +163,23 @@ class POSSlidingWindow:
 
         ans_avg_scores = None
         if scores:
-            ret_score = sum(scores) / len(scores)
-            ans_avg_scores = {'avg_scores': ret_score, 'valid_words': valid_words}
+            ans_avg_scores = sum(scores) / len(scores)
         return ans_avg_scores
 
     def _answer_scores_forward_window(self, valid_words):
         scores = []
+        num_vectors = len(valid_words)
+        valid_vectors = get_vector_repr_of_word(valid_words)
 
-        for i, word in enumerate(valid_words):
-            if i + self._window_size >= len(valid_words):
+        for i, word_vector in enumerate(valid_vectors):
+            if i + self._window_size >= num_vectors:
                 break
 
-            word_vector = self._model[word]
             win_scores = []
 
             # calculate cosine similarity for window
             for dist in range(1, self._window_size + 1):
-                context = valid_words[i + dist]
-                context_vector = self._model[context]
+                context_vector = valid_vectors[i + dist]
                 win_scores.append(cosine_similarity([word_vector], [context_vector])[0][0])
 
             # average for window
@@ -206,7 +197,7 @@ class POSSlidingWindow:
         """
         if word in string.punctuation:
             return True
-        if word not in self._model:
+        if not get_vector_repr_of_word([word], True):
             self.words_without_embeddings.append(word)
             return True
         if pos_tag not in self._pos_tags_to_filter_in:
@@ -229,24 +220,10 @@ class POSSlidingWindow:
         logger.addHandler(console_handler)
         return logger
 
-    def get_user_to_avg_scores(self, group='control'):
-        group = self._control_users_to_avg_scores if group == 'control' else self._patients_users_to_avg_scores
-        averages = {}
-        for user, user_scores in group.items():
-            averages[user] = np.mean([score for score in user_scores.values() if score > -2])
-        return averages
-
     def get_avg_scores(self, group='control'):
-        group = self._control_users_to_avg_scores if group == 'control' else self._patients_users_to_avg_scores
-        averages = [np.mean([score for score in user_scores.values() if score > -2]) for user_scores in group.values()]
-        averages = [avg for avg in averages if not np.isnan(avg)]
-        return averages
-
-    def get_user_to_question_scores(self, group='control'):
-        return self._control_users_to_avg_scores if group == 'control' else self._patients_users_to_avg_scores
-
-    def get_user_to_question_valid_words(self, group='control'):
-        return self._control_users_to_valid_words if group == 'control' else self._patients_users_to_valid_words
+        group = self._control_users_to_agg_score if group == 'control' else self._patients_users_to_agg_score
+        avg_scores = [score for score in group.values() if not np.isnan(score)]
+        return avg_scores
 
     def perform_ttest_on_averages(self):
         """
@@ -256,32 +233,4 @@ class POSSlidingWindow:
         control_scores = self.get_avg_scores('control')
         patient_scores = self.get_avg_scores('patients')
         ttest = stats.ttest_ind(control_scores, patient_scores)
-        return ttest
-
-    def perform_ttest_on_all(self):
-        """
-        Performs t-test on all of the cos-sim scores of each user
-        :return:
-        """
-        control_scores_by_question = self.get_user_to_question_scores('control')
-        patient_scores_by_question = self.get_user_to_question_scores('patients')
-
-        control = [cont for cont in control_scores_by_question.values()]
-        patients = [pat for pat in patient_scores_by_question.values()]
-
-        all_control = []
-        for cont_dict in control:
-            small_control = []
-            for cont in cont_dict.values():
-                small_control += [cont]
-            all_control += [small_control]
-
-        all_pat = []
-        for pat_dict in patients:
-            small_pat = []
-            for pat in pat_dict.values():
-                small_pat += [pat]
-            all_pat += [small_pat]
-
-        ttest = stats.ttest_ind(all_control, all_pat)
         return ttest

@@ -27,7 +27,7 @@ def cosine_similarity_several_window_sizes(window_sizes):
     for i, win_size in tqdm(enumerate(window_sizes), file=sys.stdout, total=len(window_sizes), leave=False,
                             desc='Window Sizes'):
         pos_tags = conf['pos_tags'][i]
-        cosine_calcs = POSSlidingWindow(model, data, win_size, DATA_DIR, pos_tags,
+        cosine_calcs = POSSlidingWindow(data, win_size, DATA_DIR, pos_tags,
                                         None, 10, True)
                                         # conf['questions'], conf['question_minimum_length'])
         cosine_calcs.calculate_all_scores()
@@ -68,8 +68,7 @@ if __name__ == '__main__':
     LOGGER.info('Starting: ' + str(datetime.datetime.now()))
     conf = read_conf()
     data = get_rsdd_data()
-    data = data.head(2_000)  # TODO only first 2K users
-    model = FastText.load_fasttext_format(os.path.join(DATA_DIR, 'ft_pretrained', conf["word_embeddings_rsdd"]))
+    data = data.head(1_000)  # TODO only first users
 
     pos_tags_list = conf['pos_tags']
     grid_search_count = conf['output']['grid_search_count']

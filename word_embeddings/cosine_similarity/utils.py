@@ -2,6 +2,10 @@ import os
 import string
 
 import pandas as pd
+
+if not os.name == 'nt':
+    import matplotlib
+    matplotlib.use('agg')
 from matplotlib import pyplot as plt
 
 from word_embeddings.common.utils import remove_females, remove_depressed, DATA_DIR, OUTPUTS_DIR
@@ -27,39 +31,6 @@ def get_medical_data(clean_data=False):
 
 def get_rsdd_data():
     return pd.read_csv(os.path.join(DATA_DIR, 'all_data_rsdd.csv'))
-
-
-def plot_groups_scores_by_question(control_scores_by_question,
-                                   patient_scores_by_question,
-                                   win_size,
-                                   header,
-                                   output_dir):
-    plt.clf()
-    calc_Xy_by_question_and_plot(control_scores_by_question, marker='*', c='red', label='control')
-    calc_Xy_by_question_and_plot(patient_scores_by_question, marker='.', c='blue', label='patients')
-
-    plt.xlabel('questions')
-    plt.ylabel('cos sim scores')
-    plt.xticks(range(1, 19))
-    plt.legend()
-    plt.title('Cos-Sim Per-Question For Win: {} with {}'.format(win_size, header))
-    plt.savefig(os.path.join(output_dir, "cos_sim_per_question_win{}_{}.png".format(win_size, header)))
-
-
-def calc_Xy_by_question_and_plot(user_score_by_question, marker, c, label):
-    X = []
-    y = []
-
-    for user_to_score in user_score_by_question.values():
-        questions = []
-        scores = []
-        for question, score in user_to_score.items():
-            questions += [question]
-            scores += [score]
-        X += [questions]
-        y += [scores]
-
-    plt.scatter(X, y, marker=marker, c=c, label=label)
 
 
 def ttest_results_to_csv(tests, logger, unique_name=''):

@@ -1,11 +1,14 @@
 import glob
 import json
 import os
+import socket
 
 import numpy as np
+import requests
 
 OUTPUTS_DIR = os.path.join('..', 'outputs')
 DATA_DIR = os.path.join('..', 'data')
+HOST = socket.gethostbyname("localhost")
 
 
 def read_conf():
@@ -28,33 +31,16 @@ def remove_depressed(df, removed):
     return res
 
 
-# def get_vector_repr_of_word(model, word):
-#     try:
-#         return model[word]
-#     except KeyError:
-#         if str.isdecimal(word):
-#             replacement_word = '<מספר>'
-#         elif str.isalpha(word):
-#             replacement_word = '<אנגלית>'
-#         elif any(i.isdigit() for i in word) and any("\u0590" <= c <= "\u05EA" for c in word):
-#             replacement_word = '<אות ומספר>'
-#         else:
-#             replacement_word = '<לא ידוע>'
-#         return model[replacement_word]
-# def get_vector_repr_of_word(word, is_in=False):
-#     headers = {
-#         'Content-Type': 'application/json',
-#     }
-#     data = {"word": word, 'isin': is_in}
-#     data = json.dumps(data)
-#
-#     response = requests.get('http://localhost:5000/word_embeddings', data=data, headers=headers, timeout=8)
-#
-#     if is_in:
-#         result = bool(response.text)
-#     else:
-#         result = np.fromstring(response.text[1:-1], dtype=float, sep=',')
-#     return result
+def get_vector_repr_of_word(words, is_in=False):
+    headers = {
+        'Content-Type': 'application/json',
+    }
+    data = {"words": words, 'isin': is_in}
+    data = json.dumps(data)
+
+    response = requests.get('http://{}:5000/word_embeddings'.format(HOST), data=data, headers=headers, timeout=8)
+    result = json.loads(response.text)
+    return result
 
 
 def load_model(words, word_embeddings_file):
