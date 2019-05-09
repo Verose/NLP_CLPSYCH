@@ -1,10 +1,11 @@
 import glob
 import json
 import os
+import pickle
 import socket
 
 import numpy as np
-import requests
+# import requests
 
 OUTPUTS_DIR = os.path.join('..', 'outputs')
 DATA_DIR = os.path.join('..', 'data')
@@ -75,13 +76,19 @@ def get_words_in_model(model, words):
 #     return result
 
 
-def load_model(words, word_embeddings_file):
-    model = {}
-    with open(os.path.join(DATA_DIR, 'ft_pretrained', word_embeddings_file), encoding="utf-8") as embeddings:
-        for line in embeddings:
-            values = line.split(" ")
-            if values[0] in words:
-                model[values[0]] = np.array([float(val) for val in values[1:]])
+def load_model(word_embeddings_file, is_rsdd=False):
+    if is_rsdd:
+        rsdd_data_path = os.path.join(DATA_DIR, 'ft_pretrained', 'rsdd_word2vec.pickle')
+        with open(rsdd_data_path, 'rb') as f:
+            model = pickle.load(f)
+    else:
+        model = {}
+        words = get_words()
+        with open(os.path.join(DATA_DIR, 'ft_pretrained', word_embeddings_file), encoding="utf-8") as embeddings:
+            for line in embeddings:
+                values = line.split(" ")
+                if values[0] in words:
+                    model[values[0]] = np.array([float(val) for val in values[1:]])
     return model
 
 

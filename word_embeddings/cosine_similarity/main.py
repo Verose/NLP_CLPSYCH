@@ -24,8 +24,8 @@ def cosine_similarity_several_window_sizes(window_sizes):
     for i, win_size in tqdm(enumerate(window_sizes), file=sys.stdout, total=len(window_sizes), leave=False,
                             desc='Window Sizes'):
         pos_tags = conf['pos_tags'][i]
-        cosine_calcs = POSSlidingWindow(model, data, win_size, DATA_DIR, pos_tags, conf['questions'],
-                                        conf['question_minimum_length'])
+        cosine_calcs = POSSlidingWindow(data, win_size, DATA_DIR, pos_tags, conf['questions'],
+                                        conf['question_minimum_length'], conf['word_embeddings'])
         cosine_calcs.calculate_all_scores()
 
         control_score = cosine_calcs.calculate_group_scores('control')
@@ -59,7 +59,6 @@ if __name__ == '__main__':
     conf = read_conf()
     data = get_medical_data(clean_data=conf["clean_data"])
     data = data[['id', 'label']]
-    model = load_model(get_words(), conf['word_embeddings'])
 
     if conf['output']['grid_search']:
         pos_tags_list = conf['pos_tags']

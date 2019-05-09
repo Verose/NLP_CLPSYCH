@@ -7,7 +7,7 @@ import numpy as np
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
-from word_embeddings.common.utils import pos_tags_jsons_generator, get_vector_for_word, get_words_in_model
+from word_embeddings.common.utils import pos_tags_jsons_generator, get_vector_for_word, get_words_in_model, load_model
 
 
 def init(args):
@@ -17,9 +17,10 @@ def init(args):
 
 
 class POSSlidingWindow:
-    def __init__(self, model, data, window_size, data_dir, pos_tags, questions, question_minimum_length, is_rsdd=False):
+    def __init__(self, data, window_size, data_dir, pos_tags, questions, question_minimum_length, is_rsdd=False,
+                 embeddings_path=None):
         self._data_dir = data_dir
-        self._model = model
+        self._model = None
 
         if not is_rsdd:
             self._pos_tags_to_filter_in = \
@@ -36,6 +37,7 @@ class POSSlidingWindow:
         self._questions = questions
         self._question_minimum_length = question_minimum_length
         self._is_rsdd = is_rsdd
+        self._embeddings_path = embeddings_path
         self._total = len(self._data)
 
         self._control_users_to_agg_score = {}
@@ -54,6 +56,7 @@ class POSSlidingWindow:
             self._update_users_data(user_id, label, score)
 
     def _calc_scores_per_user(self, data):
+        self._model = load_model(self._embeddings_path, self._is_rsdd)
         user_id = data['id']
         label = data['label']
 
@@ -62,7 +65,7 @@ class POSSlidingWindow:
         with counter.get_lock():
             counter.value += 1
 
-        if counter.value % 2 == 0:
+        if counter.value % 5 == 0:
             print("finished {}/{}".format(counter.value, self._total))
 
         return user_id, label, score
