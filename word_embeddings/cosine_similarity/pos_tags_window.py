@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import string
@@ -56,7 +57,7 @@ class POSSlidingWindow:
             self._update_users_data(user_id, label, score)
 
     def _calc_scores_per_user(self, data):
-        self._model = load_model(self._embeddings_path, self._is_rsdd)
+        self._model = load_model(self._embeddings_path)
         user_id = data['id']
         label = data['label']
 
@@ -65,8 +66,8 @@ class POSSlidingWindow:
         with counter.get_lock():
             counter.value += 1
 
-        if counter.value % 5 == 0:
-            print("finished {}/{}".format(counter.value, self._total))
+        if counter.value % 10 == 0:
+            print("finished {}/{} at {}".format(counter.value, self._total, datetime.datetime.now()))
 
         return user_id, label, score
 
