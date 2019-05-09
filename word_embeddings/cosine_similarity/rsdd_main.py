@@ -50,9 +50,6 @@ def cosine_similarity_several_window_sizes(window_sizes):
         win_cossim.append(cossim_test)
 
         LOGGER.info('Showing results using POS tags: {}'.format(pos_tags))
-
-        words_without_embeddings = set(cosine_calcs.words_without_embeddings)
-        LOGGER.info('Words in corpus without FastText word embeddings: {}'.format(words_without_embeddings))
         LOGGER.info('*************************************')
 
     ret_val = {

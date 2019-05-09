@@ -2,12 +2,13 @@ import datetime
 import json
 import logging
 import optparse
+import os
+import pickle
 
 from flask import Flask, request
 from flask_restful import Api
-from gensim.models.wrappers import FastText
 
-from word_embeddings.common.utils import load_model, get_words
+from word_embeddings.common.utils import load_model, get_words, DATA_DIR
 
 app = Flask(__name__)
 api = Api(app)
@@ -16,24 +17,30 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.WARNING)
 
 
-@app.route("/word_embeddings", methods=['GET'])
-def get():
-    """
-    words: list of words
-    isin: whether or not to check if the first word exists in the model
-    :return: if isin is set - returns whether the first word exists in the model.
-    otherwise returns a list of vector representations for each word. keeps order. assumes all words exist.
-    """
+@app.route("/word_embeddings/is_in", methods=['GET'])
+def get_is_in():
     data = request.json
     words = data['words']
-    is_in = data['isin']
+    result_dict = {}
 
-    if is_in:
-        return json.dumps(words[0] in model)
-
-    vectors = []
     for word in words:
-        vectors.append(model[word].tolist())
+        result_dict[word] = word in model
+
+    return json.dumps(result_dict)
+
+
+@app.route("/word_embeddings/vectors", methods=['GET'])
+def get_vectors():
+    data = request.json
+    words = data['words']
+    vectors = []
+
+    for word in words:
+        try:
+            vectors.append(model[word].tolist())
+        except SystemError as e:
+            log.error(f'An error occurred in <get_vectors>: \n{e}')
+
     return json.dumps(vectors)
 
 
@@ -46,7 +53,8 @@ if __name__ == '__main__':
     start = datetime.datetime.now()
     print('Start loading FastText word embeddings at {}'.format(start))
     if options.is_rsdd:
-        model = FastText.load_fasttext_format(options.embeddings_file)
+        rsdd_data_path = os.path.join('..', DATA_DIR, 'ft_pretrained', 'rsdd_word2vec.pickle')
+        model = pickle.load(rsdd_data_path)
     else:
         model = load_model(get_words(), options.embeddings_file)
     end = datetime.datetime.now()

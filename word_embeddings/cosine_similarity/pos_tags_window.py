@@ -1,18 +1,19 @@
 import json
-import logging
 import os
 import string
-import sys
-from datetime import datetime
-from logging import StreamHandler
-from logging.handlers import RotatingFileHandler
-from multiprocessing import Pool
+from multiprocessing import Pool, Value
 
 import numpy as np
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
-from word_embeddings.common.utils import pos_tags_jsons_generator, get_vector_repr_of_word
+from word_embeddings.common.utils import pos_tags_jsons_generator, get_vector_for_word, get_words_in_model
+
+
+def init(args):
+    """ store the counter for later use """
+    global counter
+    counter = args
 
 
 class POSSlidingWindow:
@@ -34,18 +35,16 @@ class POSSlidingWindow:
         self._questions = questions
         self._question_minimum_length = question_minimum_length
         self._is_rsdd = is_rsdd
-        self._logger = self._setup_logger()
+        self._total = len(self._data)
 
         self._control_users_to_agg_score = {}
         self._patients_users_to_agg_score = {}
 
         self._answers_to_user_id_pos_data = {}
 
-        self.words_without_embeddings = []
-
     def calculate_all_scores(self):
         # iterate users
-        pool = Pool(processes=4)
+        pool = Pool(processes=8, initializer=init, initargs=(Value('i', 0), ))
         results = pool.map(self._calc_scores_per_user, self._data)
         pool.close()
         pool.join()
@@ -58,6 +57,12 @@ class POSSlidingWindow:
         label = data['label']
 
         score = self._user_avg_score(user_id)
+        global counter
+        with counter.get_lock():
+            counter.value += 1
+
+        if counter.value % 2 == 0:
+            print("finished {}/{}".format(counter.value, self._total))
 
         return user_id, label, score
 
@@ -79,7 +84,6 @@ class POSSlidingWindow:
         for answer_num, user_pos_data in self._answers_pos_tags_generator(user_id):
             # some users didn't answer all of the questions
             if not user_pos_data['tokens']:
-                self._logger.debug('skipping empty answer for user: {}'.format(user_id))
                 continue
 
             ans_score = self._answer_score_by_pos_tags(user_pos_data['tokens'], user_pos_data['posTags'])
@@ -142,9 +146,12 @@ class POSSlidingWindow:
         """
         valid_words = []
         previous_valid_word = ''
+        words_in_model_dict = get_words_in_model(answer)
 
         # get a list of valid words and their pos_tags
         for i, (word, pos_tag) in enumerate(zip(answer, pos_tags)):
+            if not words_in_model_dict[word]:
+                continue
             if self._should_skip(word, pos_tag):
                 continue
             # skip duplicate words
@@ -169,7 +176,7 @@ class POSSlidingWindow:
     def _answer_scores_forward_window(self, valid_words):
         scores = []
         num_vectors = len(valid_words)
-        valid_vectors = get_vector_repr_of_word(valid_words)
+        valid_vectors = get_vector_for_word(valid_words)
 
         for i, word_vector in enumerate(valid_vectors):
             if i + self._window_size >= num_vectors:
@@ -197,28 +204,11 @@ class POSSlidingWindow:
         """
         if word in string.punctuation:
             return True
-        if not get_vector_repr_of_word([word], True):
-            self.words_without_embeddings.append(word)
-            return True
         if pos_tag not in self._pos_tags_to_filter_in:
             if 'all' in self._pos_tags_to_filter_in:
                 return False
             return True
         return False
-
-    def _setup_logger(self):
-        logger = logging.getLogger(self.__class__.__name__)
-        logger.setLevel(logging.INFO)
-        logger_name = os.path.join(
-            '..', 'logs', 'CosSim_{}_{:%m%d%Y-%H%M%S}.txt'.format(self.__class__.__name__, datetime.now()))
-        file_handler = RotatingFileHandler(logger_name, backupCount=5, encoding='utf-8')
-        formatter = logging.Formatter("[%(asctime)s][%(name)s][%(levelname)s] %(message)s", '%H:%M:%S')
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-        console_handler = StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-        return logger
 
     def get_avg_scores(self, group='control'):
         group = self._control_users_to_agg_score if group == 'control' else self._patients_users_to_agg_score

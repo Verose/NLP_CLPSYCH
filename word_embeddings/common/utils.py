@@ -31,14 +31,30 @@ def remove_depressed(df, removed):
     return res
 
 
-def get_vector_repr_of_word(words, is_in=False):
+def get_vector_for_word(words):
     headers = {
         'Content-Type': 'application/json',
     }
-    data = {"words": words, 'isin': is_in}
+    data = {"words": words}
     data = json.dumps(data)
 
-    response = requests.get('http://{}:5000/word_embeddings'.format(HOST), data=data, headers=headers, timeout=8)
+    response = requests.get(
+        'http://{}:5000/word_embeddings/vectors'.format(HOST), data=data, headers=headers, timeout=8
+    )
+    result = json.loads(response.text)
+    return result
+
+
+def get_words_in_model(words):
+    headers = {
+        'Content-Type': 'application/json',
+    }
+    data = {"words": words}
+    data = json.dumps(data)
+
+    response = requests.get(
+        'http://{}:5000/word_embeddings/is_in'.format(HOST), data=data, headers=headers, timeout=8
+    )
     result = json.loads(response.text)
     return result
 
