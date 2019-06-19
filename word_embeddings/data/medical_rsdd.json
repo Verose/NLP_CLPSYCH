@@ -1,0 +1,14 @@
+{
+  "window_size": [
+    2, 2
+  ],
+  "questions": null,
+  "question_minimum_length": 10,
+  "word_embeddings": "rsdd_word2vec.pickle",
+  "pos_tags": [
+    "All", "Content"
+  ],
+  "output": {
+    "grid_search_count": 6
+  }
+}

@@ -4,16 +4,14 @@ import os
 import pickle
 import socket
 
-import numpy as np
-# import requests
 
 OUTPUTS_DIR = os.path.join('..', 'outputs')
 DATA_DIR = os.path.join('..', 'data')
 HOST = socket.gethostbyname("localhost")
 
 
-def read_conf():
-    json_file = open(os.path.join(DATA_DIR, 'medical.json')).read()
+def read_conf(medical_json_path):
+    json_file = open(os.path.join(DATA_DIR, medical_json_path)).read()
     json_data = json.loads(json_file, encoding='utf-8')
     return json_data
 

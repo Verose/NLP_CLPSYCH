@@ -3,7 +3,7 @@ import sys
 
 from tqdm import tqdm
 
-from word_embeddings.common.utils import read_conf, load_model, get_words
+from word_embeddings.common.utils import read_conf
 from word_embeddings.cosine_similarity.pos_tags_window import POSSlidingWindow
 from word_embeddings.cosine_similarity.utils import *
 
@@ -56,7 +56,7 @@ def cosine_similarity_several_window_sizes(window_sizes):
 
 
 if __name__ == '__main__':
-    conf = read_conf()
+    conf = read_conf('medical.json')
     data = get_medical_data(clean_data=conf["clean_data"])
     data = data[['id', 'label']]
 

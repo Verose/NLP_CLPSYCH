@@ -6,7 +6,6 @@
   "question_minimum_length": 50,
   "clean_data": true,
   "word_embeddings": "word2vec.pickle",
-  "word_embeddings_rsdd": "rsdd_word2vec.pickle",
   "pos_tags": [
     "All", "Content"
   ],
