@@ -108,7 +108,7 @@ def get_sets_words():
 
 
 def pos_tags_jsons_generator():
-    json_pattern = os.path.join(DATA_DIR, 'answers_pos_tags', '*.json')
+    json_pattern = os.path.join(DATA_DIR, 'pos_tags', '*.json')
     json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
 
     for file in json_files:
