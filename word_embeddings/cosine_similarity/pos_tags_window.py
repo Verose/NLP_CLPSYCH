@@ -18,8 +18,8 @@ def init(args):
 
 
 class POSSlidingWindow:
-    def __init__(self, data, window_size, data_dir, pos_tags, questions, question_minimum_length, is_rsdd=False,
-                 embeddings_path=None):
+    def __init__(self, data, window_size, data_dir, pos_tags, questions, question_minimum_length,
+                 n_processes=8, is_rsdd=False, embeddings_path=None):
         self._data_dir = data_dir
         self._model = None
 
@@ -37,6 +37,7 @@ class POSSlidingWindow:
         self._window_size = window_size
         self._questions = questions
         self._question_minimum_length = question_minimum_length
+        self._n_processes = n_processes
         self._is_rsdd = is_rsdd
         self._embeddings_path = embeddings_path
         self._total = len(self._data)
@@ -48,7 +49,7 @@ class POSSlidingWindow:
 
     def calculate_all_scores(self):
         # iterate users
-        pool = Pool(processes=8, initializer=init, initargs=(Value('i', 0), ))
+        pool = Pool(processes=self._n_processes, initializer=init, initargs=(Value('i', 0), ))
         results = pool.map(self._calc_scores_per_user, self._data)
         pool.close()
         pool.join()

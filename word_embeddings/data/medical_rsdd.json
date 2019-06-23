@@ -10,5 +10,6 @@
   ],
   "output": {
     "grid_search_count": 6
-  }
+  },
+  "n_processes": 12
 }

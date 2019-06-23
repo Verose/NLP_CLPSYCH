@@ -13,5 +13,6 @@
     "plot": false,
     "grid_search": true,
     "grid_search_count": 6
-  }
+  },
+  "n_processes": 8
 }

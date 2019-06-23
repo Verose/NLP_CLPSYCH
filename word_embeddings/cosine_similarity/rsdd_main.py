@@ -27,7 +27,8 @@ def cosine_similarity_several_window_sizes(window_sizes):
                             desc='Window Sizes'):
         pos_tags = conf['pos_tags'][i]
         cosine_calcs = POSSlidingWindow(data, win_size, DATA_DIR, pos_tags, conf['questions'],
-                                        conf['question_minimum_length'], True, conf['word_embeddings'])
+                                        conf['question_minimum_length'], conf["n_processes"], True,
+                                        conf['word_embeddings'])
         cosine_calcs.calculate_all_scores()
 
         cossim_test = WindowCosSim(pos_tags, win_size, [])
