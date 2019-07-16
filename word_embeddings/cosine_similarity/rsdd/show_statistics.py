@@ -12,6 +12,8 @@ def get_rsdd_data():
     data = defaultdict(int)
     control_posts = []
     depression_posts = []
+    control_words_mean = []
+    depression_words_mean = []
     control_words = []
     depression_words = []
     counter = 0
@@ -30,12 +32,17 @@ def get_rsdd_data():
 
             sum_words = 0
             for post in posts:
-                sum_words += len(post[1].split())
+                num_tokens = len(post[1].split())
+                sum_words += num_tokens
+                if label == 'control':
+                    control_words += [num_tokens]
+                elif label == 'depression':
+                    depression_words += [num_tokens]
             # average words per post
             if label == 'control':
-                control_words += [sum_words/len(posts)]
+                control_words_mean += [sum_words/len(posts)]
             elif label == 'depression':
-                depression_words += [sum_words/len(posts)]
+                depression_words_mean += [sum_words/len(posts)]
 
             if counter % 5000 == 0:
                 print("Processed {} users".format(counter))
@@ -46,10 +53,10 @@ def get_rsdd_data():
     print("data info: " + str(data))
     print("Control: ")
     print("Posts: avg: {}, max: {}".format(np.mean(control_posts), np.max(control_posts)))
-    print("Words: avg: {}, max: {}".format(np.mean(control_words), np.max(control_words)))
+    print("Words: avg: {}, max: {}".format(np.mean(control_words_mean), np.max(control_words_mean)))
     print("Depression: ")
     print("Posts: avg: {}, max: {}".format(np.mean(depression_posts), np.max(depression_posts)))
-    print("Words: avg: {}, max: {}".format(np.mean(depression_words), np.max(depression_words)))
+    print("Words: avg: {}, max: {}".format(np.mean(depression_words_mean), np.max(depression_words_mean)))
 
     plt.clf()
     posts_bins = [0, 100, 200, 500, 750, 1000, 1500, 1750, 2000, 5000, 8000, 11000]
@@ -66,15 +73,29 @@ def get_rsdd_data():
     plt.savefig(os.path.join('..', OUTPUTS_DIR, 'rsdd_posts_histogram.png'))
 
     plt.clf()
-    words_bins = [0, 10, 25, 50, 75, 100, 125]
+    words_mean_bins = [0, 10, 25, 50, 75, 100, 125]
+    words_mean_labs = [str(b) for b in words_mean_bins[1:]]
+    control_wm_h = np.histogram(control_words_mean, bins=words_mean_bins)
+    patients_wm_h = np.histogram(depression_words_mean, bins=words_mean_bins)
+    plt.bar(range(len(control_wm_h[0])), control_wm_h[0], width=1, label='control')
+    plt.bar(range(len(patients_wm_h[0])), patients_wm_h[0], width=1, label='patients')
+    plt.xticks(range(len(control_wm_h[0])), labels=words_mean_labs)
+    plt.yticks([0, 100, 500, 2500, 11000, 20000])
+    plt.xlabel('words avg bins')
+    plt.ylabel('#Users')
+    plt.legend()
+    plt.savefig(os.path.join('..', OUTPUTS_DIR, 'rsdd_words_mean_histogram.png'))
+
+    plt.clf()
+    words_bins = [0, 5, 10, 25, 40, 50, 75, 100, 125, 1000, 5000, 12000]
     words_labs = [str(b) for b in words_bins[1:]]
     control_w_h = np.histogram(control_words, bins=words_bins)
     patients_w_h = np.histogram(depression_words, bins=words_bins)
     plt.bar(range(len(control_w_h[0])), control_w_h[0], width=1, label='control')
     plt.bar(range(len(patients_w_h[0])), patients_w_h[0], width=1, label='patients')
     plt.xticks(range(len(control_w_h[0])), labels=words_labs)
-    plt.yticks([0, 100, 500, 2500, 11000, 20000])
-    plt.xlabel('words avg bins')
+    # plt.yticks([0, 100, 500, 2500, 11000, 20000])
+    plt.xlabel('words bins')
     plt.ylabel('#Users')
     plt.legend()
     plt.savefig(os.path.join('..', OUTPUTS_DIR, 'rsdd_words_histogram.png'))
