@@ -35,8 +35,11 @@ if __name__ == '__main__':
         post = user_info["body"]
         out_path = os.path.join(options.out_dir, '{user}.csv'.format(user=user))
 
-        with open(out_path, "a+") as out:
-            location = out.tell()
-            if location == 0:
-                out.write("epoch,subreddit,post\n")
-            out.write("{},\"{}\",\"{}\"\n".format(created_epoch, subreddit, post))
+        try:
+            with open(out_path, "a+", encoding='utf-8') as out:
+                location = out.tell()
+                if location == 0:
+                    out.write("epoch,subreddit,post\n")
+                out.write("{},\"{}\",\"{}\"\n".format(created_epoch, subreddit, post))
+        except UnicodeEncodeError as e:
+            print("\nskipping line {line} because: {reason}".format(line=i, reason=e.reason))
