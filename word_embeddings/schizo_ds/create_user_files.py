@@ -42,4 +42,4 @@ if __name__ == '__main__':
                     out.write("epoch,subreddit,post\n")
                 out.write("{},\"{}\",\"{}\"\n".format(created_epoch, subreddit, post))
         except UnicodeEncodeError as e:
-            print("\nskipping line {line} because: {reason}".format(line=i, reason=e.reason))
+            print("\nskipping line {line} because: {reason}".format(line=i + options.skip, reason=e.reason))
