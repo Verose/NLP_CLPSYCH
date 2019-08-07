@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import sys
 
@@ -17,6 +18,33 @@ file_handler.setFormatter(formatter)
 LOGGER.addHandler(file_handler)
 
 
+class PosTagsGenerator:
+    def __init__(self, data_dir, pos_tags_folder, num_posts_limit=500):
+        self._data_dir = data_dir
+        self._pos_tags_folder = pos_tags_folder
+        self._num_posts_limit = num_posts_limit
+
+    def __call__(self, user_id):
+        """
+        Generator for pos tags.
+        :param user_id: user id
+        For the hebrew dataset, the pos tags data is read from json files.
+        For the english dataset, the pos tags are calculated from the posts.
+        :return: (answer number, dictionary with 'tokens' list, and 'posTags' list)
+        """
+        with open(
+                os.path.join(self._data_dir, self._pos_tags_folder, '{}.json'.format(user_id)), encoding='utf-8') as f:
+            ans_pos_tags = json.load(f)
+            tokens_list = ans_pos_tags['tokens']
+            pos_tags_list = ans_pos_tags['posTags']
+
+            for answer_num, (tokens, pos_tags) in enumerate(zip(tokens_list, pos_tags_list), 1):
+                if answer_num > self._num_posts_limit:
+                    break
+
+                yield answer_num, {'tokens': tokens, 'posTags': pos_tags}
+
+
 def cosine_similarity_several_window_sizes(window_sizes):
     win_cossim = []
     control_scores_gs = []
@@ -26,7 +54,10 @@ def cosine_similarity_several_window_sizes(window_sizes):
     for i, win_size in tqdm(enumerate(window_sizes), file=sys.stdout, total=len(window_sizes), leave=False,
                             desc='Window Sizes'):
         pos_tags = conf['pos_tags'][i]
-        cosine_calcs = POSSlidingWindow(data, win_size, DATA_DIR, pos_tags, conf['run_params'], is_rsdd=True)
+        answers_pos_tags_generator = PosTagsGenerator(DATA_DIR, conf['run_params']['pos_tags_folder'],
+                                                      conf['run_params']['num_posts_limit'])
+        cosine_calcs = POSSlidingWindow(data, win_size, DATA_DIR, pos_tags, conf['run_params'],
+                                        answers_pos_tags_generator, pos_tags_type='stanford')
         cosine_calcs.calculate_all_scores()
 
         cossim_test = WindowCosSim(pos_tags, win_size, [])

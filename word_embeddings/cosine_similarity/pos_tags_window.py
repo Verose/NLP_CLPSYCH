@@ -1,6 +1,4 @@
 import datetime
-import json
-import os
 import string
 from multiprocessing import Pool, Value
 
@@ -8,7 +6,7 @@ import numpy as np
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
-from word_embeddings.common.utils import pos_tags_jsons_generator, get_vector_for_word, get_words_in_model, load_model
+from word_embeddings.common.utils import get_vector_for_word, get_words_in_model, load_model
 
 
 def init(args):
@@ -17,69 +15,13 @@ def init(args):
     counter = args
 
 
-class PosTagsGeneratorReddit:
-    def __init__(self, data_dir, pos_tags_folder):
-        self._data_dir = data_dir
-        self._pos_tags_folder = pos_tags_folder
-
-    def __call__(self, user_id):
-        """
-        Generator for pos tags.
-        :param user_id: user id
-        For the hebrew dataset, the pos tags data is read from json files.
-        For the english dataset, the pos tags are calculated from the posts.
-        :return: (answer number, dictionary with 'tokens' list, and 'posTags' list)
-        """
-        with open(
-                os.path.join(self._data_dir, self._pos_tags_folder, '{}.json'.format(user_id)), encoding='utf-8') as f:
-            ans_pos_tags = json.load(f)
-            tokens_list = ans_pos_tags['tokens']
-            pos_tags_list = ans_pos_tags['posTags']
-
-            for answer_num, (tokens, pos_tags) in enumerate(zip(tokens_list, pos_tags_list), 1):
-                if answer_num > 500:  # TODO hard coded limit for posts
-                    break
-
-                yield answer_num, {'tokens': tokens, 'posTags': pos_tags}
-
-
-class PosTagsGenerator:
-    def __init__(self, questions):
-        self._questions = questions
-        self._answers_to_user_id_pos_data = {}
-
-    def _read_answers_pos_tags(self):
-        pos_tags_generator = pos_tags_jsons_generator()
-
-        for answer_num, ans_pos_tags in pos_tags_generator:
-            if self._questions is not None and answer_num not in self._questions:
-                continue
-            self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
-
-        return len(self._answers_to_user_id_pos_data) > 0
-
-    def __call__(self, user_id):
-        """
-        Generator for pos tags.
-        :param user_id: user id
-        For the hebrew dataset, the pos tags data is read from json files.
-        For the english dataset, the pos tags are calculated from the posts.
-        :return: (answer number, dictionary with 'tokens' list, and 'posTags' list)
-        """
-        if len(self._answers_to_user_id_pos_data) == 0:
-            assert self._read_answers_pos_tags(), "No pos tags found!"
-
-        for answer_num, users_pos_data in sorted(self._answers_to_user_id_pos_data.items()):
-            user_pos_data = users_pos_data[user_id]
-            yield answer_num, user_pos_data
-
-
 class POSSlidingWindow:
-    def __init__(self, data, window_size, data_dir, pos_tags, run_params, is_rsdd=False):
+    def __init__(self, data, window_size, data_dir, pos_tags, run_params, answers_pos_tags_generator,
+                 pos_tags_type='explicit'):
         self._data_dir = data_dir
         self._model = None
 
-        if not is_rsdd:
+        if pos_tags_type == 'explicit':
             self._pos_tags_to_filter_in = \
                 'noun verb adverb adjective'.split() if pos_tags.lower() == 'content' else pos_tags.lower().split()
         else:
@@ -98,11 +40,7 @@ class POSSlidingWindow:
 
         self._control_users_to_agg_score = {}
         self._patients_users_to_agg_score = {}
-
-        if is_rsdd:
-            self._answers_pos_tags_generator = PosTagsGeneratorReddit(data_dir, run_params['pos_tags_folder'])
-        else:
-            self._answers_pos_tags_generator = PosTagsGenerator(run_params['questions'])
+        self._answers_pos_tags_generator = answers_pos_tags_generator
 
     def calculate_all_scores(self):
         # iterate users
