@@ -1,15 +1,19 @@
 {
+  "run_params": {
+    "questions": null,
+    "question_minimum_length": 10,
+    "n_processes": 12,
+    "word_embeddings": "rsdd_word2vec.pickle",
+    "pos_tags_folder": "pos_tags_rsdd"
+  },
   "window_size": [
     2, 2
   ],
-  "questions": null,
-  "question_minimum_length": 10,
-  "word_embeddings": "rsdd_word2vec.pickle",
+  "data_file": "all_data_rsdd.csv",
   "pos_tags": [
     "All", "Content"
   ],
   "output": {
     "grid_search_count": 6
-  },
-  "n_processes": 12
+  }
 }

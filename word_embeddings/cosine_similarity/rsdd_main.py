@@ -26,9 +26,7 @@ def cosine_similarity_several_window_sizes(window_sizes):
     for i, win_size in tqdm(enumerate(window_sizes), file=sys.stdout, total=len(window_sizes), leave=False,
                             desc='Window Sizes'):
         pos_tags = conf['pos_tags'][i]
-        cosine_calcs = POSSlidingWindow(data, win_size, DATA_DIR, pos_tags, conf['questions'],
-                                        conf['question_minimum_length'], conf["n_processes"], True,
-                                        conf['word_embeddings'])
+        cosine_calcs = POSSlidingWindow(data, win_size, DATA_DIR, pos_tags, conf['run_params'], is_rsdd=True)
         cosine_calcs.calculate_all_scores()
 
         cossim_test = WindowCosSim(pos_tags, win_size, [])
@@ -63,7 +61,7 @@ def cosine_similarity_several_window_sizes(window_sizes):
 if __name__ == '__main__':
     LOGGER.info('Starting: ' + str(datetime.datetime.now()))
     conf = read_conf('medical_rsdd.json')
-    data = get_rsdd_data()
+    data = get_rsdd_data(conf['data_file'])
     pos_tags_list = conf['pos_tags']
     grid_search_count = conf['output']['grid_search_count']
     pos_tags_win_sizes = range(1, grid_search_count+1)

@@ -29,8 +29,8 @@ def get_medical_data(clean_data=False):
     return medical_data
 
 
-def get_rsdd_data():
-    return pd.read_csv(os.path.join(DATA_DIR, 'all_data_rsdd.csv'))
+def get_rsdd_data(filename):
+    return pd.read_csv(os.path.join(DATA_DIR, filename))
 
 
 def ttest_results_to_csv(tests, logger, unique_name=''):
