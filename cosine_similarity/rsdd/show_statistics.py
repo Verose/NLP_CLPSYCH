@@ -5,7 +5,7 @@ from collections import defaultdict
 import numpy as np
 from matplotlib import pyplot as plt
 
-from word_embeddings.common.utils import DATA_DIR, OUTPUTS_DIR
+from common.utils import DATA_DIR, OUTPUTS_DIR
 
 
 def get_rsdd_data():

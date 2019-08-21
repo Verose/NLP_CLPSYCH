@@ -8,7 +8,7 @@ import pickle
 from flask import Flask, request
 from flask_restful import Api
 
-from word_embeddings.common.utils import load_model, get_words, DATA_DIR
+from common.utils import load_model, get_words, DATA_DIR
 
 app = Flask(__name__)
 api = Api(app)

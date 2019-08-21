@@ -3,8 +3,8 @@ import os
 
 import pandas as pd
 
-from word_embeddings.common.utils import remove_females, remove_depressed, DATA_DIR, OUTPUTS_DIR
-from word_embeddings.dependency_parser.dependency_cos_sim import DependencyCosSimScorer
+from common.utils import remove_females, remove_depressed, DATA_DIR, OUTPUTS_DIR
+from dependency_parser.dependency_cos_sim import DependencyCosSimScorer
 
 
 LOGGER = logging.getLogger('Main')

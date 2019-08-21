@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from scipy import stats
 
-from word_embeddings.common.utils import DATA_DIR, OUTPUTS_DIR
+from common.utils import DATA_DIR, OUTPUTS_DIR
 
 
 def avg_for_column(scores, column, test):

@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
-from word_embeddings.common.utils import OUTPUTS_DIR, DATA_DIR, read_relevant_set
+from common.utils import OUTPUTS_DIR, DATA_DIR, read_relevant_set
 
 noun_tags = ['NN', 'NNP', 'NNPS', 'NNS']
 adjective_tags = ['JJ', 'JJR', 'JJS']

@@ -10,7 +10,7 @@ from sklearn.svm import LinearSVC
 from xgboost import XGBClassifier
 
 from utils import LOGGER
-from word_embeddings.common.utils import DATA_DIR, OUTPUTS_DIR
+from common.utils import DATA_DIR, OUTPUTS_DIR
 
 scoring = {
     'accuracy': accuracy_scorer,

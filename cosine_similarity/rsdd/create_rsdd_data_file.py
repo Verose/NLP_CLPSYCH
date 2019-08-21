@@ -7,7 +7,7 @@ import sys
 import pandas as pd
 from tqdm import tqdm
 
-from word_embeddings.common.utils import DATA_DIR
+from common.utils import DATA_DIR
 
 
 def handle_user_info(user_info, df):

@@ -7,7 +7,7 @@ from multiprocessing.pool import Pool
 
 from flair.embeddings import WordEmbeddings, DocumentPoolEmbeddings, Sentence, FlairEmbeddings
 
-from word_embeddings.common.utils import DATA_DIR
+from common.utils import DATA_DIR
 
 # avoid "WARNING this function is deprecated, use smart_open.open instead"
 logging.getLogger('smart_open').setLevel(logging.ERROR)

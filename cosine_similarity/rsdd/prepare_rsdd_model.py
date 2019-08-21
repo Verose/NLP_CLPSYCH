@@ -5,7 +5,7 @@ import pickle
 
 from gensim.models.wrappers import FastText
 
-from word_embeddings.common.utils import DATA_DIR
+from common.utils import DATA_DIR
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()

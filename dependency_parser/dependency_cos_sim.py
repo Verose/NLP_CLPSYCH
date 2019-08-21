@@ -5,10 +5,10 @@ import pandas as pd
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
-from word_embeddings.common.utils import pos_tags_jsons_generator, DATA_DIR, OUTPUTS_DIR, \
+from common.utils import pos_tags_jsons_generator, DATA_DIR, OUTPUTS_DIR, \
     load_model, get_sets_words, read_relevant_set, read_reference_set
-from word_embeddings.dependency_parser.generate_relevant_sets import repair_document
-from word_embeddings.dependency_parser.idf_scores import IdfScores
+from dependency_parser.generate_relevant_sets import repair_document
+from dependency_parser.idf_scores import IdfScores
 
 
 class DependencyCosSimScorer:

@@ -12,7 +12,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import StandardScaler
 
-from word_embeddings.common.utils import DATA_DIR
+from common.utils import DATA_DIR
 
 """
 1. convert rsdd posts to flair embeddings

@@ -8,7 +8,7 @@ if not os.name == 'nt':
     matplotlib.use('agg')
 from matplotlib import pyplot as plt
 
-from word_embeddings.common.utils import remove_females, remove_depressed, DATA_DIR, OUTPUTS_DIR
+from common.utils import remove_females, remove_depressed, DATA_DIR, OUTPUTS_DIR
 
 
 def get_medical_data(clean_data=False):

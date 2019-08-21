@@ -4,7 +4,7 @@ import sys
 import pandas as pd
 from tqdm import tqdm
 
-from word_embeddings.common.utils import DATA_DIR
+from common.utils import DATA_DIR
 
 data = pd.read_csv(os.path.join('..', DATA_DIR, 'all_data_rsdd.csv'))
 data = data.head(10_000)

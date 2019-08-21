@@ -6,7 +6,7 @@ import sys
 import nltk
 from tqdm import tqdm
 
-from word_embeddings.common.utils import DATA_DIR
+from common.utils import DATA_DIR
 
 
 skip = 3608

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import StandardScaler
 
-from word_embeddings.common.utils import DATA_DIR
+from common.utils import DATA_DIR
 
 
 def count_all_posts():

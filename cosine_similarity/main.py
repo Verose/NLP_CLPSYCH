@@ -3,10 +3,10 @@ import sys
 
 from tqdm import tqdm
 
-from word_embeddings.common.utils import pos_tags_jsons_generator
-from word_embeddings.common.utils import read_conf
-from word_embeddings.cosine_similarity.pos_tags_window import POSSlidingWindow
-from word_embeddings.cosine_similarity.utils import *
+from common.utils import pos_tags_jsons_generator
+from common.utils import read_conf
+from cosine_similarity.pos_tags_window import POSSlidingWindow
+from cosine_similarity.utils import *
 
 LOGGER = logging.getLogger('Main')
 LOGGER.setLevel(logging.INFO)

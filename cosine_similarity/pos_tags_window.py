@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
-from word_embeddings.common.utils import get_vector_for_word, get_words_in_model, load_model
+from common.utils import get_vector_for_word, get_words_in_model, load_model
 
 
 def init(args):

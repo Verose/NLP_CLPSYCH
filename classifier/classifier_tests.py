@@ -16,7 +16,7 @@ from xgboost import XGBClassifier
 from features import get_features, boosting_params, rf_params, svm_params
 from results_records import TestResults, ResultsRecord, AnswersResults
 from utils import LOGGER
-from word_embeddings.common.utils import OUTPUTS_DIR
+from common.utils import OUTPUTS_DIR
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.expand_frame_repr', False)

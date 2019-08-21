@@ -1,23 +1,18 @@
-import optparse
 import os
 import warnings
 
 import pandas as pd
 
-from classifier_tests import classify_base, classify_per_question, classify_question_types
+from classifier_tests import classify_base_best_classifier
 from features import pos_tags_features, cos_sim_features, sentiment_features, word_related_features, get_features, \
     add_tfidf_features, tf_idf_features
 from utils import LOGGER
-from word_embeddings.common.utils import remove_females, remove_depressed, DATA_DIR
+from common.utils import remove_females, remove_depressed, DATA_DIR
 
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 
 
 if __name__ == '__main__':
-    parser = optparse.OptionParser()
-    parser.add_option('--debug', action="store_true", default=False)
-    options, remainder = parser.parse_args()
-
     removed_ids = []
     df_res = pd.read_csv(os.path.join(DATA_DIR, 'features_all.csv'))
     df_res = remove_females(df_res, removed_ids)
@@ -42,16 +37,6 @@ if __name__ == '__main__':
     ]
 
     LOGGER.info('-----------------------------------------------------------------')
-    LOGGER.info('--------------------- Performing Base Tests ---------------------')
+    LOGGER.info('------- Performing T-TestsBase of Best Classifier Results -------')
     LOGGER.info('-----------------------------------------------------------------')
-    classify_base(data, y, tests, options.debug)
-
-    LOGGER.info('-----------------------------------------------------------------')
-    LOGGER.info('----------------- Performing Per-Question Tests -----------------')
-    LOGGER.info('-----------------------------------------------------------------')
-    classify_per_question(data, y, tests, options.debug)
-
-    LOGGER.info('-----------------------------------------------------------------')
-    LOGGER.info('----------------- Performing Question Type Tests ----------------')
-    LOGGER.info('-----------------------------------------------------------------')
-    classify_question_types(data, y, tests, options.debug)
+    classify_base_best_classifier(data, y, tests)

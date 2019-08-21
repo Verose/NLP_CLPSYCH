@@ -1,7 +1,7 @@
 import logging
 import os
 
-from word_embeddings.common.utils import OUTPUTS_DIR
+from common.utils import OUTPUTS_DIR
 
 LOGGER = logging.getLogger('Main')
 LOGGER.setLevel(logging.INFO)

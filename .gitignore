@@ -1,8 +1,8 @@
 .idea/
-word_embeddings/data/*
-!word_embeddings/data/medical*.json
-word_embeddings/logs/
-word_embeddings/outputs/
+data/*
+!data/medical*.json
+logs/
+outputs/
 venv/
 *.pyc
 __pycache__/
