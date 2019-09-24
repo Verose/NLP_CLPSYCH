@@ -93,7 +93,7 @@ def cosine_similarity_several_window_sizes(window_sizes):
 if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
-    options, = parser.parse_args()
+    options, _ = parser.parse_args()
 
     LOGGER.info('Starting: ' + str(datetime.datetime.now()))
     conf = read_conf('medical_{}.json'.format(options.dataset))

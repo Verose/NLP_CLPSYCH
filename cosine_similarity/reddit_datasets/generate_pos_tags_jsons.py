@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 from common.utils import DATA_DIR
 
-
 dataset_labels = {
     'rsdd': ['control', 'depression'],
     'smhd': ['control', 'schizophrenia']
@@ -20,7 +19,7 @@ if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
     parser.add_option('--skip', default=0, action="store")
-    options, = parser.parse_args()
+    options, _ = parser.parse_args()
 
     skip = options.skip
     dataset = options.dataset
@@ -30,23 +29,36 @@ if __name__ == '__main__':
 
     for i, user_data in tqdm(enumerate(reddit, 1), file=sys.stdout, total=len(reddit),
                              desc='{} training users'.format(dataset.upper())):
-        user_info = json.loads(user_data)[0]
-        label = user_info['label']
+        if dataset == 'rsdd':
+            user_info = json.loads(user_data)[0]
+            labels = [user_info['label']]
+        else:
+            user_info = json.loads(user_data)
+            labels = user_info['label']
         posts = user_info['posts']
         user_id = i + skip
 
-        if label not in dataset_labels[dataset]:
+        true_label = None
+        for label in labels:
+            if label in dataset_labels[dataset]:
+                true_label = label
+                break
+
+        if not true_label:
             continue
 
         user_json = {
             "id": "{}".format(user_id),
-            "label": label,
+            "label": true_label,
         }
         user_tokens = []
         user_pos_tags = []
 
         for post_stuff in posts:
-            post = post_stuff[1]
+            if dataset == 'rsdd':
+                post = post_stuff[1]
+            else:
+                post = post_stuff['text']
             post = post.translate(str.maketrans('', '', string.punctuation))  # #$%&@
             tokens = nltk.word_tokenize(post)
             pos_tags = nltk.pos_tag(tokens)
