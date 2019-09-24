@@ -1,0 +1,20 @@
+{
+  "run_params": {
+    "questions": null,
+    "question_minimum_length": 10,
+    "n_processes": 12,
+    "word_embeddings": "smhd_word2vec.pickle",
+    "pos_tags_folder": "pos_tags_smhd",
+    "num_posts_limit": 500
+  },
+  "window_size": [
+    2, 2
+  ],
+  "data_file": "all_data_smhd.csv",
+  "pos_tags": [
+    "All", "Content"
+  ],
+  "output": {
+    "grid_search_count": 6
+  }
+}

@@ -29,7 +29,7 @@ def get_medical_data(clean_data=False):
     return medical_data
 
 
-def get_rsdd_data(filename):
+def get_reddit_data(filename):
     return pd.read_csv(os.path.join(DATA_DIR, filename))
 
 

@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import optparse
 import sys
 
 from tqdm import tqdm
@@ -90,9 +91,13 @@ def cosine_similarity_several_window_sizes(window_sizes):
 
 
 if __name__ == '__main__':
+    parser = optparse.OptionParser()
+    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    options, = parser.parse_args()
+
     LOGGER.info('Starting: ' + str(datetime.datetime.now()))
-    conf = read_conf('medical_rsdd.json')
-    data = get_rsdd_data(conf['data_file'])
+    conf = read_conf('medical_{}.json'.format(options.dataset))
+    data = get_reddit_data(conf['data_file'])
     pos_tags_list = conf['pos_tags']
     grid_search_count = conf['output']['grid_search_count']
     pos_tags_win_sizes = range(1, grid_search_count+1)
