@@ -53,7 +53,7 @@ if __name__ == '__main__':
     start = datetime.datetime.now()
     print('Start loading FastText word embeddings at {}'.format(start))
     if options.is_rsdd:
-        rsdd_data_path = os.path.join('..', DATA_DIR, 'ft_pretrained', 'rsdd_word2vec.pickle')
+        rsdd_data_path = os.path.join('..', DATA_DIR, 'ft_pretrained', 'en_word2vec.pickle')
         model = pickle.load(rsdd_data_path)
     else:
         model = load_model(get_words(), options.embeddings_file)

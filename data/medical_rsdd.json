@@ -3,7 +3,7 @@
     "questions": null,
     "question_minimum_length": 10,
     "n_processes": 12,
-    "word_embeddings": "rsdd_word2vec.pickle",
+    "word_embeddings": "en_word2vec.pickle",
     "pos_tags_folder": "pos_tags_rsdd",
     "num_posts_limit": 500
   },
