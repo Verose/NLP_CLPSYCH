@@ -1,6 +1,7 @@
 import glob
 import json
 import logging
+import optparse
 import os
 from multiprocessing import Value
 from multiprocessing.pool import Pool
@@ -71,7 +72,8 @@ def save_json(jfile):
         user_data["posTags"] = pos_tags_list_lowercase
         user_data["embeddings"] = posts_embeddings_list
 
-        with open(os.path.join('..', DATA_DIR, 'pos_tags_rsdd_embeds', '{}.json'.format(user_id)), 'w') as out_file:
+        with open(os.path.join('..', DATA_DIR, 'pos_tags_{dataset}_embeds', '{user_id}.json'.format(
+                dataset=dataset, user_id=user_id)), 'w') as out_file:
             json.dump(user_data, out_file)
         print('Finished with file {}.json'.format(user_id))
 
@@ -90,7 +92,12 @@ def get_doc_embeddings():
 
 
 if __name__ == "__main__":
-    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_rsdd', '*.json')
+    parser = optparse.OptionParser()
+    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    options, _ = parser.parse_args()
+
+    dataset = options.dataset
+    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_{}'.format(dataset), '*.json')
     json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
 
     controls_counter = Value('i', 0)
