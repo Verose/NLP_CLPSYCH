@@ -91,13 +91,14 @@ if __name__ == "__main__":
     parser.add_option('--eps', action="store", type=int)
     parser.add_option('--min_samples', action="store", type=int)
     parser.add_option('--output', action="store", type=str, default="")
+    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
     options, _ = parser.parse_args()
 
     eps = options.eps
     min_samples = options.min_samples
     print("Using eps={}, min_samples={}".format(eps, min_samples))
 
-    embeddings_dir = os.path.join('..', DATA_DIR, 'pos_tags_rsdd_embeds')
+    embeddings_dir = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds'.format(options.dataset))
     json_pattern = os.path.join(embeddings_dir, '*.json')
     json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
     emb_ind_to_user_n_post_ind = {}
@@ -144,7 +145,7 @@ if __name__ == "__main__":
     largest_cluster_points = np.where(labels == largest_cluster[0])[0]
     points_iter = np.ndenumerate(largest_cluster_points)
 
-    output_dir = os.path.join('..', DATA_DIR, 'pos_tags_rsdd_embeds_filtered', options.output)
+    output_dir = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds_filtered'.format(options.dataset), options.output)
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
     create_filtered_jsons(points_iter, embeddings_dir, output_dir)
