@@ -64,5 +64,5 @@ if __name__ == "__main__":
             user_id = os.path.basename(jfile).split('.')[0]
             with open(jfile) as f:
                 user_info = json.load(f)
-                df = handle_user_info(user_info, df)
+                df = handle_user_info(user_info, df, dataset)
         df.to_csv(os.path.join('..', DATA_DIR, 'all_data_{}_{}.csv'.format(dataset, options.folder)), index=False)
