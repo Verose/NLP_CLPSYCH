@@ -8,6 +8,7 @@
 """
 import glob
 import json
+import optparse
 import os
 
 import matplotlib.pyplot as plt
@@ -18,7 +19,7 @@ from common.utils import DATA_DIR
 
 
 def count_all_posts():
-    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_rsdd_embeds', '*.json')
+    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds'.format(dataset), '*.json')
     json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
     sum_all_posts = 0
 
@@ -28,14 +29,14 @@ def count_all_posts():
             posts_list = pos_tags['tokens']  # each post is a list of tokens
             sum_all_posts += len(posts_list)
 
-    print('Overall posts num: {}.json\n'.format(sum_all_posts))
+    print('Overall posts num: {}\n'.format(sum_all_posts))
 
 
 def count_users_with_embeddings():
-    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_rsdd_embeds', '*.json')
+    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds'.format(dataset), '*.json')
     json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
     sum_controls = 0
-    sum_depression = 0
+    sum_patients = 0
 
     for jfile in json_files:
         with open(jfile, encoding='utf-8') as f:
@@ -44,17 +45,17 @@ def count_users_with_embeddings():
 
             if label == 'control':
                 sum_controls += 1
-            elif label == 'depression':
-                sum_depression += 1
+            elif label == patients_label:
+                sum_patients += 1
             else:
                 print("Unidentified label: {}".format(label))
 
-    print('Overall controls num: {} and depression num: {}'.format(sum_controls, sum_depression))
+    print('Overall controls num: {} and patients num: {}'.format(sum_controls, sum_patients))
 
 
 def print_svd():
     print("*******Starting to run!*******")
-    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_rsdd_embeds', '*.json')
+    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds'.format(dataset), '*.json')
     json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
     all_embeddings = []
 
@@ -78,7 +79,44 @@ def print_svd():
     plt.savefig('dbscan_svd.png')
 
 
+def count_participants_datafile():
+    from tqdm import tqdm
+    import pandas as pd
+    import sys
+
+    data = pd.read_csv(os.path.join('..', DATA_DIR, 'all_data_{}.csv'.format(dataset)))
+    # data = data.head(10_000)
+    controls = 0
+    patients = 0
+
+    for _, data in tqdm(data.iterrows(), file=sys.stdout, total=len(data), leave=False, desc='Users'):
+        user_id = data['id']
+        label = data['label']
+
+        if label == 'control':
+            controls += 1
+        elif label == patients_label:
+            patients += 1
+
+    print('There are {} controls and {} patients in {}'.format(controls, patients, options.dataset))
+
+
 if __name__ == "__main__":
-    # count_all_posts()
-    # count_users_with_embeddings()
-    print_svd()
+    parser = optparse.OptionParser()
+    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    parser.add_option('--svd', default=False, action="store_true")
+    parser.add_option('--count_posts', default=False, action="store_true")
+    parser.add_option('--count_users', default=False, action="store_true")
+    parser.add_option('--count_datafile', default=False, action="store_true")
+    options, _ = parser.parse_args()
+    dataset = options.dataset
+    patients_label = 'depression' if options.dataset == 'rsdd' else 'schizophrenia'
+
+    if options.svd:
+        print_svd()
+    if options.count_posts:
+        count_all_posts()
+    if options.count_users:
+        count_users_with_embeddings()
+    if options.count_datafile:
+        count_participants_datafile()
