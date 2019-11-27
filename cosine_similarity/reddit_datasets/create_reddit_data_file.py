@@ -10,17 +10,16 @@ from tqdm import tqdm
 from common.utils import DATA_DIR
 
 
-def handle_user_info(user_info, df, dataset):
-    dataset_labels = {
-        'rsdd': ['control', 'depression'],
-        'smhd': ['control', 'schizophrenia']
-    }
+dataset_labels = {
+    'rsdd': ['control', 'depression'],
+    'smhd': ['control', 'schizophrenia']
+}
 
-    if dataset == 'rsdd':
-        labels = [user_info['label']]
-    else:
-        labels = user_info['label']
 
+def handle_user_info(user_id, labels, num_posts, df):
+    if min_posts and num_posts < min_posts:
+        # print('Skipping user {} with less than {} posts'.format(user_id, min_posts))
+        return df
     true_label = None
     for label in labels:
         if label in dataset_labels[dataset]:
@@ -37,9 +36,11 @@ if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option('--folder', action="store", default='')
     parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    parser.add_option('--min_posts', default=None, type=int, action="store")
     options, _ = parser.parse_args()
 
     dataset = options.dataset
+    min_posts = options.min_posts
     df = pd.DataFrame(columns=['id', 'label'])
 
     if not options.folder:
@@ -50,9 +51,11 @@ if __name__ == "__main__":
                                        desc='{} training users'.format(dataset.upper())):
             if dataset == 'rsdd':
                 user_info = json.loads(user_data)[0]
+                labels = [user_info['label']]
             else:
                 user_info = json.loads(user_data)
-            df = handle_user_info(user_info, df, dataset)
+                labels = user_info['label']
+            df = handle_user_info(user_id, labels, len(user_info['posts']), df)
         df.to_csv(os.path.join('..', DATA_DIR, 'all_data_{}.csv'.format(dataset)), index=False)
     else:
         json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds_filtered'.format(dataset), options.folder,
@@ -64,5 +67,7 @@ if __name__ == "__main__":
             user_id = os.path.basename(jfile).split('.')[0]
             with open(jfile) as f:
                 user_info = json.load(f)
-                df = handle_user_info(user_info, df, dataset)
-        df.to_csv(os.path.join('..', DATA_DIR, 'all_data_{}_{}.csv'.format(dataset, options.folder)), index=False)
+                labels = [user_info['label']]
+                df = handle_user_info(user_id, labels, len(user_info['tokens']), df)
+        filename = 'all_data_{}_{}{}.csv'.format(dataset, options.folder, '_' + str(min_posts) if min_posts else '')
+        df.to_csv(os.path.join('..', DATA_DIR, filename), index=False)
