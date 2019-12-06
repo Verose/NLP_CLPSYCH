@@ -34,6 +34,7 @@ class POSSlidingWindow:
         self._data = data.to_dict('records')
         self._window_size = window_size
         self._question_minimum_length = run_params['question_minimum_length']
+        self._question_maximum_length = run_params['question_maximum_length']
         self._n_processes = run_params['n_processes']
         self._embeddings_path = run_params['word_embeddings']
         self._total = len(self._data)
@@ -127,7 +128,7 @@ class POSSlidingWindow:
         if not valid_words:
             return None
         # skip sentences too short
-        if len(valid_words) < self._question_minimum_length:
+        if len(valid_words) < self._question_minimum_length or len(valid_words) > self._question_maximum_length:
             return None
 
         scores = self._answer_scores_forward_window(valid_words)

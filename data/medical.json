@@ -2,6 +2,7 @@
   "run_params": {
     "questions": [15, 16, 17, 18],
     "question_minimum_length": 50,
+    "question_maximum_length": 9999999,
     "n_processes": 8,
     "word_embeddings": "word2vec.pickle"
   },
