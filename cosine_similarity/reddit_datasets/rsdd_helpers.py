@@ -1,11 +1,3 @@
-"""
-1. convert rsdd posts using bert
-   use pos tags or original sentences?
-   save vectors to new file?
-2. use dbscan on bert vectors
-   know how to know which post came from which user
-3. visualize?
-"""
 import glob
 import json
 import optparse
@@ -16,6 +8,24 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import StandardScaler
 
 from common.utils import DATA_DIR
+
+
+def count_min_posts(folder, min_posts):
+    json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds_filtered'.format(dataset), folder, '*.json')
+    json_files = [pos_json for pos_json in glob.glob(json_pattern) if pos_json.endswith('.json')]
+    sum_controls = 0
+    sum_depression = 0
+    for jfile in json_files:
+        with open(jfile, encoding='utf-8') as f:
+            pos_tags = json.load(f)
+            label = pos_tags['label']
+            if len(pos_tags['tokens']) < min_posts:
+                continue
+            if label == 'control':
+                sum_controls += 1
+            elif label == 'schizophrenia':
+                sum_depression += 1
+    print('Overall controls num: {} and depression num: {}'.format(sum_controls, sum_depression))
 
 
 def count_all_posts():
@@ -108,6 +118,9 @@ if __name__ == "__main__":
     parser.add_option('--count_posts', default=False, action="store_true")
     parser.add_option('--count_users', default=False, action="store_true")
     parser.add_option('--count_datafile', default=False, action="store_true")
+    parser.add_option('--count_min_posts', default=False, action="store_true")
+    parser.add_option('--folder', default='45_100', action="store")
+    parser.add_option('--min_posts', default=20, action="store")
     options, _ = parser.parse_args()
     dataset = options.dataset
     patients_label = 'depression' if options.dataset == 'rsdd' else 'schizophrenia'
@@ -120,3 +133,5 @@ if __name__ == "__main__":
         count_users_with_embeddings()
     if options.count_datafile:
         count_participants_datafile()
+    if options.count_min_posts:
+        count_min_posts(options.folder, options.min_posts)
