@@ -3,7 +3,8 @@ import json
 import optparse
 import os
 import time
-from tqdm import tqdm
+from multiprocessing import Manager
+from multiprocessing.pool import Pool
 from operator import itemgetter
 
 from annoy import AnnoyIndex
@@ -76,6 +77,54 @@ def write_filtered_jsons(user, inds, embeds_dir, out_path):
     print("{}, ".format(user), end='')
 
 
+def init(*args):
+    """ store the dataset for later use """
+    global cores_list
+    global extra_cores_list
+    global run_times
+    cores_list = args[0]
+    extra_cores_list = args[1]
+    run_times = args[2]
+
+
+run_times = []
+cores_list = []
+extra_cores_list = []
+
+
+def check_is_core_point_wrapper(*args):
+    check_is_core_point(*(args[0]))
+
+
+def check_is_core_point(i, min_samples, eps, vector_dim, annoy_save_path):
+    global cores_list
+    global run_times
+    annoy_load = AnnoyIndex(vector_dim, 'euclidean')
+    annoy_load.load(annoy_save_path)
+
+    ts = time.time()
+    neighbors, distances = annoy_load.get_nns_by_item(i, min_samples, search_k=-1, include_distances=True)
+    te = time.time()
+    run_times.append(int((te - ts) * 1000))
+    if sum([1 for dist in distances if dist < eps]) == min_samples:
+        cores_list.append(i)
+
+
+def check_neighbor_of_core_point_wrapper(*args):
+    check_neighbor_of_core_point(*(args[0]))
+
+
+def check_neighbor_of_core_point(non_core, eps, vector_dim, annoy_save_path):
+    global cores_list
+    global extra_cores_list
+    annoy_load = AnnoyIndex(vector_dim, 'euclidean')
+    annoy_load.load(annoy_save_path)
+
+    for core in cores_list:
+        if annoy_load.get_distance(non_core, core) < eps:
+            extra_cores_list.append(non_core) if non_core not in extra_cores_list else extra_cores_list
+
+
 if __name__ == "__main__":
     print("*******Starting to run!*******")
     parser = optparse.OptionParser()
@@ -83,6 +132,7 @@ if __name__ == "__main__":
     parser.add_option('--min_samples', action="store", type=int)
     parser.add_option('--trees', action="store", type=int, default=10000)
     parser.add_option('--output', action="store", type=str, default="")
+    parser.add_option('--n_processes', action="store", type=int, default=1)
     parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
     options, _ = parser.parse_args()
 
@@ -99,7 +149,7 @@ if __name__ == "__main__":
     emb_ind_to_user_n_post_ind = {}
     print("*******Creating Annoy (if needed)*******")
     annoy_save_path = os.path.join(annoy_output_dir, 'annoy_{}.ann'.format(options.dataset))
-    mapping_save_path = os.path.join(annoy_output_dir, 'mappong_{}.json'.format(options.dataset))
+    mapping_save_path = os.path.join(annoy_output_dir, 'mapping_{}.json'.format(options.dataset))
     vector_dim = 2148
 
     if not os.path.isfile(annoy_save_path):
@@ -123,40 +173,42 @@ if __name__ == "__main__":
         with open(mapping_save_path, 'w') as out_file:
             json.dump(emb_ind_to_user_n_post_ind, out_file)
 
+    print("*******Finding core samples*******")
+    # start algorithm
+    # for each vector: mark it as 'core' if it has at least 'min_samples' neighbors within radius 'eps'
     annoy_load = AnnoyIndex(vector_dim, 'euclidean')
     annoy_load.load(annoy_save_path)
+
+    manager = Manager()
+    cores_list = manager.list()
+    extra_cores_list = manager.list()
+    run_times = manager.list()
+
+    pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, extra_cores_list, run_times))
+    num_samples = annoy_load.get_n_items()
+
+    params = zip(range(num_samples), [min_samples]*num_samples, [eps]*num_samples,
+                 [vector_dim]*num_samples, [annoy_save_path]*num_samples)
+    pool.map(check_is_core_point_wrapper, params)
+    print("Average search time: {}ms over {} samples".format(float(sum(run_times) / num_samples), num_samples))
+    print("Found {} core samples".format(len(cores_list)))
+
+    print("*******Finding neighbors of core samples*******")
+    # for each non-core vector check if it has a 'core' neighbor within radius 'eps'
+    non_cores = set(range(num_samples)) - set(cores_list)
+    num_non_cores = len(non_cores)
+    params = zip(non_cores, [eps]*num_non_cores, [vector_dim]*num_non_cores, [annoy_save_path]*num_non_cores)
+    pool.map(check_neighbor_of_core_point_wrapper, params)
+    pool.close()
+    cores_list.extend(extra_cores_list)
+    print("Found a total of {} core samples".format(len(cores_list)))
+
+    print("*******Finished fitting the data*******")
+
+    print('Estimated number of noise points: %d' % len(set(range(num_samples)) - set(cores_list)))
+
     if not emb_ind_to_user_n_post_ind:
         with open(mapping_save_path) as in_file:
             emb_ind_to_user_n_post_ind = json.load(in_file)
 
-    print("*******Finding core samples*******")
-    run_times = []
-    # start algorithm
-    # for each vector: mark it as 'core' if it has at least 'min_samples' neighbors within radius 'eps'
-    cores = []
-    num_samples = annoy_load.get_n_items()
-
-    for i in tqdm(range(num_samples), total=num_samples, leave=False, desc='Searching Core Samples'):
-        ts = time.time()
-        neighbors, distances = annoy_load.get_nns_by_item(i, min_samples, search_k=-1, include_distances=True)
-        te = time.time()
-        run_times.append(int((te - ts) * 1000))
-        if sum([1 for dist in distances if dist < eps]) == min_samples:
-            cores.append(i)
-
-    print("Average search time: {}ms over {} samples".format(float(sum(run_times) / num_samples), num_samples))
-
-    print("*******Finding neighbors of core samples*******")
-    # for each non-core vector check if it has a 'core' neighbor within radius 'eps'
-    fixed_cores = []
-    for non_core in set(range(num_samples)) - set(cores):
-        for core in cores:
-            if annoy_load.get_distance(non_core, core) < eps:
-                fixed_cores.append(non_core) if non_core not in fixed_cores else fixed_cores
-    cores.extend(fixed_cores)
-
-    print("*******Finished fitting the data*******")
-
-    print('Estimated number of noise points: %d' % len(set(range(num_samples)) - set(cores)))
-
-    create_filtered_jsons(cores, embeddings_dir, annoy_output_dir)
+    create_filtered_jsons(cores_list, embeddings_dir, annoy_output_dir)
