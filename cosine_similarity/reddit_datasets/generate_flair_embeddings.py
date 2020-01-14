@@ -3,7 +3,6 @@ import json
 import logging
 import optparse
 import os
-from multiprocessing import Value
 from multiprocessing.pool import Pool
 
 from flair.embeddings import WordEmbeddings, DocumentPoolEmbeddings, Sentence, FlairEmbeddings
@@ -47,12 +46,16 @@ def save_json(jfile):
 
         for i, (post, pos_tags) in enumerate(zip(posts_list, pos_tags_list)):
             post_lowercase = [token.lower() for token in post]
-            if 5 <= len(post_lowercase) <= 40:
-                posts_lowercase_list.append(post_lowercase)
+            if any("http" in word for word in post_lowercase):
+                continue
+            posts_lowercase_list.append(post_lowercase)
+            if 0 < len(post_lowercase):
                 pos_tags_list_lowercase.append(pos_tags)
                 post_sentence = Sentence(' '.join([post for post in post_lowercase]))
                 document_embeddings.embed(post_sentence)
                 posts_embeddings_list.append(post_sentence.get_embedding().tolist())
+            elif len(post_lowercase) > 100:
+                print('long post')
             else:
                 continue
 
