@@ -28,9 +28,8 @@ def load_embeddings(json_files):
                 emb_ind_to_user_n_post_ind[index] = (user_id, post_ind)
                 index += 1
             embeddings.extend(posts_embeddings)
-        if i % 10 == 0 and i > 0:
+        if i % 150 == 0 and i > 0:
             print("Finished loading {} users".format(i))
-            break
     print("*******Finished loading all {} of the vectors*******".format(len(embeddings)))
 
     return embeddings
