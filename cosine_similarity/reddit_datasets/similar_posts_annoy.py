@@ -92,10 +92,6 @@ cores_list = []
 extra_cores_list = []
 
 
-def check_is_core_point_wrapper(*args):
-    check_is_core_point(*(args[0]))
-
-
 def check_is_core_point(i, min_samples, eps, vector_dim, annoy_save_path):
     global cores_list
     global run_times
@@ -108,10 +104,6 @@ def check_is_core_point(i, min_samples, eps, vector_dim, annoy_save_path):
     run_times.append(int((te - ts) * 1000))
     if sum([1 for dist in distances if dist < eps]) == min_samples:
         cores_list.append(i)
-
-
-def check_neighbor_of_core_point_wrapper(*args):
-    check_neighbor_of_core_point(*(args[0]))
 
 
 def check_neighbor_of_core_point(non_core, eps, vector_dim, annoy_save_path):
