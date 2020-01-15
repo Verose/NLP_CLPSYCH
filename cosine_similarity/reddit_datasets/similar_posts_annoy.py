@@ -181,10 +181,9 @@ if __name__ == "__main__":
         pbar.update()
 
     pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, extra_cores_list, run_times))
-    params = zip(range(num_samples), [min_samples]*num_samples, [eps]*num_samples,
-                 [vector_dim]*num_samples, [annoy_save_path]*num_samples)
-    pbar = tqdm(params, total=num_samples, leave=False, desc='Searching Core Samples')
-    pool.map_async(check_is_core_point_wrapper, pbar, callback=update)
+    pbar = tqdm(range(num_samples), total=num_samples, leave=False, desc='Searching Core Samples')
+    for i in range(pbar.total):
+        pool.apply_async(check_is_core_point, args=(i, min_samples, eps, vector_dim, annoy_save_path), callback=update)
     pool.close()
     pool.join()
     pbar.close()
@@ -197,10 +196,9 @@ if __name__ == "__main__":
     num_non_cores = len(non_cores)
 
     pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, extra_cores_list, run_times))
-    params = zip(non_cores, [eps]*num_non_cores, [vector_dim]*num_non_cores, [annoy_save_path]*num_non_cores)
-
-    pbar = tqdm(params, total=num_non_cores, leave=False, desc='Searching Extra Core Samples')
-    pool.map_async(check_neighbor_of_core_point_wrapper, pbar, callback=update)
+    pbar = tqdm(non_cores, total=num_non_cores, leave=False, desc='Searching Extra Core Samples')
+    for i in non_cores:
+        pool.apply_async(check_neighbor_of_core_point, args=(i, eps, vector_dim, annoy_save_path), callback=update)
     pool.close()
     pool.join()
     pbar.close()
