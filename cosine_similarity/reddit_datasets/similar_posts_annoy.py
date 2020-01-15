@@ -3,6 +3,7 @@ import json
 import optparse
 import os
 import time
+from tqdm import tqdm
 from multiprocessing import Manager
 from multiprocessing.pool import Pool
 from operator import itemgetter
@@ -177,18 +178,24 @@ if __name__ == "__main__":
     # for each vector: mark it as 'core' if it has at least 'min_samples' neighbors within radius 'eps'
     annoy_load = AnnoyIndex(vector_dim, 'euclidean')
     annoy_load.load(annoy_save_path)
+    num_samples = annoy_load.get_n_items()
 
     manager = Manager()
     cores_list = manager.list()
     extra_cores_list = manager.list()
     run_times = manager.list()
 
-    pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, extra_cores_list, run_times))
-    num_samples = annoy_load.get_n_items()
+    def update(*args):
+        pbar.update()
 
+    pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, extra_cores_list, run_times))
     params = zip(range(num_samples), [min_samples]*num_samples, [eps]*num_samples,
                  [vector_dim]*num_samples, [annoy_save_path]*num_samples)
-    pool.map(check_is_core_point_wrapper, params)
+    pbar = tqdm(params, total=num_samples, leave=False, desc='Searching Core Samples')
+    pool.map_async(check_is_core_point_wrapper, pbar, callback=update)
+    pool.close()
+    pool.join()
+    pbar.close()
     print("Average search time: {}ms over {} samples".format(float(sum(run_times) / num_samples), num_samples))
     print("Found {} core samples".format(len(cores_list)))
 
@@ -196,9 +203,15 @@ if __name__ == "__main__":
     # for each non-core vector check if it has a 'core' neighbor within radius 'eps'
     non_cores = set(range(num_samples)) - set(cores_list)
     num_non_cores = len(non_cores)
+
+    pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, extra_cores_list, run_times))
     params = zip(non_cores, [eps]*num_non_cores, [vector_dim]*num_non_cores, [annoy_save_path]*num_non_cores)
-    pool.map(check_neighbor_of_core_point_wrapper, params)
+
+    pbar = tqdm(params, total=num_non_cores, leave=False, desc='Searching Extra Core Samples')
+    pool.map_async(check_neighbor_of_core_point_wrapper, pbar, callback=update)
     pool.close()
+    pool.join()
+    pbar.close()
     cores_list.extend(extra_cores_list)
     print("Found a total of {} core samples".format(len(cores_list)))
 
