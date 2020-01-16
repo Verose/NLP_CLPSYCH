@@ -48,8 +48,8 @@ def save_json(jfile):
             post_lowercase = [token.lower() for token in post]
             if any("http" in word for word in post_lowercase):
                 continue
-            posts_lowercase_list.append(post_lowercase)
             if 0 < len(post_lowercase):
+                posts_lowercase_list.append(post_lowercase)
                 pos_tags_list_lowercase.append(pos_tags)
                 post_sentence = Sentence(' '.join([post for post in post_lowercase]))
                 document_embeddings.embed(post_sentence)
