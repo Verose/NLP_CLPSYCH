@@ -80,16 +80,16 @@ def write_filtered_jsons(user, inds, embeds_dir, out_path):
 def init(*args):
     """ store the dataset for later use """
     global cores_list
-    global extra_cores_list
+    global cores_neighbors
     global run_times
     cores_list = args[0]
-    extra_cores_list = args[1]
+    cores_neighbors = args[1]
     run_times = args[2]
 
 
 run_times = []
 cores_list = []
-extra_cores_list = []
+cores_neighbors = {}
 
 
 def check_is_core_point(i, min_samples, eps, vector_dim, annoy_save_path):
@@ -104,17 +104,8 @@ def check_is_core_point(i, min_samples, eps, vector_dim, annoy_save_path):
     run_times.append(int((te - ts) * 1000))
     if sum([1 for dist in distances if dist < eps]) == min_samples:
         cores_list.append(i)
-
-
-def check_neighbor_of_core_point(non_core, eps, vector_dim, annoy_save_path):
-    global cores_list
-    global extra_cores_list
-    annoy_load = AnnoyIndex(vector_dim, 'euclidean')
-    annoy_load.load(annoy_save_path)
-
-    for core in cores_list:
-        if annoy_load.get_distance(non_core, core) < eps:
-            extra_cores_list.append(non_core) if non_core not in extra_cores_list else extra_cores_list
+        for neighbor in neighbors:
+            cores_neighbors[neighbor] = True
 
 
 if __name__ == "__main__":
@@ -156,31 +147,32 @@ if __name__ == "__main__":
         # X = X.astype(np.float32)
 
         print("*******Saving Annoy data*******")
-        annoy_save = AnnoyIndex(vector_dim, 'euclidean')
+        annoy = AnnoyIndex(vector_dim, 'euclidean')
         for i, sample in enumerate(X):
-            annoy_save.add_item(i, sample)
-        annoy_save.build(num_trees)
-        annoy_save.save(annoy_save_path)
+            annoy.add_item(i, sample)
+        annoy.build(num_trees)
+        annoy.save(annoy_save_path)
 
         with open(mapping_save_path, 'w') as out_file:
             json.dump(emb_ind_to_user_n_post_ind, out_file)
+    else:
+        annoy = AnnoyIndex(vector_dim, 'euclidean')
+        annoy.load(annoy_save_path)
 
     print("*******Finding core samples*******")
     # start algorithm
     # for each vector: mark it as 'core' if it has at least 'min_samples' neighbors within radius 'eps'
-    annoy_load = AnnoyIndex(vector_dim, 'euclidean')
-    annoy_load.load(annoy_save_path)
-    num_samples = annoy_load.get_n_items()
+    num_samples = annoy.get_n_items()
 
     manager = Manager()
     cores_list = manager.list()
-    extra_cores_list = manager.list()
+    cores_neighbors = manager.dict()
     run_times = manager.list()
 
     def update(*args):
         pbar.update()
 
-    pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, extra_cores_list, run_times))
+    pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, cores_neighbors, run_times))
     pbar = tqdm(range(num_samples), total=num_samples, leave=False, desc='Searching Core Samples')
     for i in range(pbar.total):
         pool.apply_async(check_is_core_point, args=(i, min_samples, eps, vector_dim, annoy_save_path), callback=update)
@@ -192,19 +184,10 @@ if __name__ == "__main__":
 
     print("*******Finding neighbors of core samples*******")
     # for each non-core vector check if it has a 'core' neighbor within radius 'eps'
-    non_cores = set(range(num_samples)) - set(cores_list)
-    num_non_cores = len(non_cores)
-
-    pool = Pool(processes=options.n_processes, initializer=init, initargs=(cores_list, extra_cores_list, run_times))
-    pbar = tqdm(non_cores, total=num_non_cores, leave=False, desc='Searching Extra Core Samples')
-    for i in non_cores:
-        pool.apply_async(check_neighbor_of_core_point, args=(i, eps, vector_dim, annoy_save_path), callback=update)
-    pool.close()
-    pool.join()
-    pbar.close()
-    cores_list.extend(extra_cores_list)
+    for neighbor in cores_neighbors.keys():
+        if neighbor not in cores_list:
+            cores_list.append(neighbor)
     print("Found a total of {} core samples".format(len(cores_list)))
-
     print("*******Finished fitting the data*******")
 
     print('Estimated number of noise points: %d' % len(set(range(num_samples)) - set(cores_list)))
