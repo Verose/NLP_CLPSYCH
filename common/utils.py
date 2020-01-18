@@ -2,12 +2,10 @@ import glob
 import json
 import os
 import pickle
-import socket
 
 
-OUTPUTS_DIR = os.path.join('..', 'outputs')
-DATA_DIR = os.path.join('..', 'data')
-HOST = socket.gethostbyname("localhost")
+OUTPUTS_DIR = os.environ['OUTPUT_DIRS'] if 'OUTPUT_DIRS' in os.environ else os.path.join('..', 'outputs')
+DATA_DIR = os.environ['DATA_DIR'] if 'DATA_DIR' in os.environ else os.path.join('..', 'data')
 
 
 def read_conf(medical_json_path):
@@ -38,19 +36,6 @@ def get_vector_for_word(model, words):
 
     return vectors
 
-# def get_vector_for_word(words):
-    # headers = {
-    #     'Content-Type': 'application/json',
-    # }
-    # data = {"words": words}
-    # data = json.dumps(data)
-    #
-    # response = requests.get(
-    #     'http://{}:5000/word_embeddings/vectors'.format(HOST), data=data, headers=headers, timeout=8
-    # )
-    # result = json.loads(response.text)
-    # return result
-
 
 def get_words_in_model(model, words):
     result_dict = {}
@@ -59,19 +44,6 @@ def get_words_in_model(model, words):
         result_dict[word] = word in model
 
     return result_dict
-
-# def get_words_in_model(words):
-#     headers = {
-#         'Content-Type': 'application/json',
-#     }
-#     data = {"words": words}
-#     data = json.dumps(data)
-#
-#     response = requests.get(
-#         'http://{}:5000/word_embeddings/is_in'.format(HOST), data=data, headers=headers, timeout=8
-#     )
-#     result = json.loads(response.text)
-#     return result
 
 
 def load_model(word_embeddings_file):
