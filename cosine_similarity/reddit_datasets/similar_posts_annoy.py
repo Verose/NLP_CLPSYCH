@@ -6,7 +6,6 @@ import time
 from tqdm import tqdm
 from multiprocessing import Manager
 from multiprocessing.pool import Pool
-from operator import itemgetter
 
 from annoy import AnnoyIndex
 from sklearn.preprocessing import StandardScaler
@@ -44,7 +43,7 @@ def create_filtered_jsons(filtered_embeddings, embeds_dir, out_dir):
     is_first = True
     print("Finished writing users: ", end='')
 
-    for emb_ind in filtered_embeddings:
+    for emb_ind in sorted(filtered_embeddings):
         user, point_ind = emb_ind_to_user_n_post_ind[str(emb_ind)]
         if is_first:
             prev_user = user
@@ -67,10 +66,9 @@ def write_filtered_jsons(user, inds, embeds_dir, out_path):
         user_data = {}
         data = json.load(f)
         user_data['label'] = data['label']
-        slicer = itemgetter(*inds)
-        user_data['tokens'] = slicer(data['tokens'])
-        user_data['posTags'] = slicer(data['posTags'])
-        user_data['embeddings'] = slicer(data['embeddings'])
+        user_data['tokens'] = [data['tokens'][i] for i in inds]
+        user_data['posTags'] = [data['posTags'][i] for i in inds]
+        user_data['embeddings'] = [data['embeddings'][i] for i in inds]
 
         with open(os.path.join(out_path, '{}.json'.format(user)), 'w') as out_file:
             json.dump(user_data, out_file)
