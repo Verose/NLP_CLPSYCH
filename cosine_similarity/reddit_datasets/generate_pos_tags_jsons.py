@@ -11,7 +11,8 @@ from common.utils import DATA_DIR
 
 dataset_labels = {
     'rsdd': ['control', 'depression'],
-    'smhd': ['control', 'schizophrenia']
+    'smhd': ['control', 'schizophrenia'],
+    'tssd': ['control', 'schizophrenia'],
 }
 
 
@@ -89,12 +90,15 @@ def init(*args):
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    parser.add_option('--dataset', choices=['rsdd', 'smhd', 'tssd'], default='rsdd', action="store")
     parser.add_option('--n_processes', default=1, action="store")
     options, _ = parser.parse_args()
 
     dataset = options.dataset
     reddit_file = os.path.join('..', DATA_DIR, '{}_posts'.format(dataset), 'training')
+
+    if not os.path.isdir(os.path.join('..', DATA_DIR, 'pos_tags_{}'.format(dataset))):
+        os.mkdir(os.path.join('..', DATA_DIR, 'pos_tags_{}'.format(dataset)))
 
     i = 0
     with open(reddit_file) as f:
