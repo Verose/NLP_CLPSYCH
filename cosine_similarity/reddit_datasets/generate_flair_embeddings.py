@@ -23,7 +23,7 @@ def save_json(jfile):
     global dataset
 
     user_id = os.path.basename(jfile).split('.')[0]
-    save_path = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds_nolimit'.format(dataset), '{}.json'.format(user_id))
+    save_path = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds'.format(dataset), '{}.json'.format(user_id))
 
     if os.path.isfile(save_path):
         print("Skipping user {} file already exists".format(user_id))
@@ -83,7 +83,7 @@ def get_doc_embeddings():
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
-    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    parser.add_option('--dataset', choices=['rsdd', 'smhd', 'tssd'], default='rsdd', action="store")
     parser.add_option('--n_processes', default=2, type=int, action="store")
     options, _ = parser.parse_args()
 

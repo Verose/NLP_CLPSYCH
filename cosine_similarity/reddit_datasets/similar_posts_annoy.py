@@ -114,7 +114,7 @@ if __name__ == "__main__":
     parser.add_option('--trees', action="store", type=int, default=10000)
     parser.add_option('--output', action="store", type=str, default="")
     parser.add_option('--n_processes', action="store", type=int, default=1)
-    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    parser.add_option('--dataset', choices=['rsdd', 'smhd', 'tssd'], default='rsdd', action="store")
     options, _ = parser.parse_args()
 
     eps = options.eps
