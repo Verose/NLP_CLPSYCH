@@ -1,9 +1,8 @@
 {
   "run_params": {
+    "dataset_name": "RSDD",
     "questions": null,
     "question_minimum_length": 10,
-    "question_maximum_length": 9999999,
-    "n_processes": 12,
     "word_embeddings": "en_word2vec.pickle",
     "pos_tags_folder": "pos_tags_rsdd",
     "num_posts_limit": 500

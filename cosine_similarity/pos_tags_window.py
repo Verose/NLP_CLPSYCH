@@ -1,10 +1,11 @@
-import datetime
+import os
 import string
-from multiprocessing import Pool, Value
 
 import numpy as np
+import pandas as pd
 from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
+from tqdm import tqdm
 
 from common.utils import get_vector_for_word, get_words_in_model, load_model
 
@@ -34,69 +35,67 @@ class POSSlidingWindow:
         self._data = data.to_dict('records')
         self._window_size = window_size
         self._question_minimum_length = run_params['question_minimum_length']
-        self._question_maximum_length = run_params['question_maximum_length']
-        self._n_processes = run_params['n_processes']
         self._embeddings_path = run_params['word_embeddings']
         self._total = len(self._data)
 
         self._control_users_to_agg_score = {}
         self._patients_users_to_agg_score = {}
         self._answers_pos_tags_generator = answers_pos_tags_generator
+        self.derailment_precalc_scores = os.path.join(
+            self._data_dir,
+            "{}_win_{}_{}_scores.csv".format(run_params['dataset_name'], self._window_size, pos_tags)
+        )
 
     def calculate_all_scores(self):
-        # iterate users
-        pool = Pool(processes=self._n_processes, initializer=init, initargs=(Value('i', 0), ))
-        results = pool.map(self._calc_scores_per_user, self._data)
-        pool.close()
-        pool.join()
-
-        for user_id, label, score in results:
-            self._update_users_data(user_id, label, score)
-
-    def _calc_scores_per_user(self, data):
-        self._model = load_model(self._embeddings_path)
-        user_id = data['id']
-        label = data['label']
-
-        score = self._user_avg_score(user_id)
-        global counter
-        with counter.get_lock():
-            counter.value += 1
-
-        if counter.value % 10 == 0:
-            print("finished {}/{} at {}".format(counter.value, self._total, datetime.datetime.now()))
-
-        return user_id, label, score
-
-    def _update_users_data(self, user_id, label, score):
-        if label == 'control':
-            self._control_users_to_agg_score[user_id] = score
+        if os.path.isfile(self.derailment_precalc_scores):
+            results_df = pd.read_csv(self.derailment_precalc_scores)
         else:
+            self._model = load_model(self._embeddings_path)
+            # iterate users
+            results = []
+
+            for user_data in tqdm(self._data, total=len(self._data), desc="Creating scores csv file"):
+                result = self._calc_scores_per_user(user_data)
+                results.extend(result)
+
+            columns = ["user_id", "label", "answer_num", "valid_words_cnt", "score"]
+            results_df = pd.DataFrame(results, columns=columns)
+            results_df.to_csv(self.derailment_precalc_scores, index=False)
+
+        self._update_users_data(results_df)
+
+    def _update_users_data(self, results_df):
+        control_rows = results_df[
+            (results_df['label'] == 'control') & (results_df['valid_words_cnt'] >= self._question_minimum_length)]
+        patients_rows = results_df[
+            (results_df['label'] != 'control') & (results_df['valid_words_cnt'] >= self._question_minimum_length)]
+        control_scores = control_rows.groupby(['user_id'])['score'].mean()
+        patient_scores = patients_rows.groupby(['user_id'])['score'].mean()
+
+        for user_id, score in control_scores.iteritems():
+            self._control_users_to_agg_score[user_id] = score
+        for user_id, score in patient_scores.iteritems():
             self._patients_users_to_agg_score[user_id] = score
 
     def calculate_group_scores(self, group='control'):
         scores = self.get_avg_scores(group)
         return np.mean(scores)
 
-    def _user_avg_score(self, user_id):
-        sum_scores = 0
-        scores_counter = 0
+    def _calc_scores_per_user(self, data):
+        user_id = data['id']
+        label = data['label']
+        answer_data = []
 
         # iterate answers
         for answer_num, user_pos_data in self._answers_pos_tags_generator(user_id):
             # some users didn't answer all of the questions
             if not user_pos_data['tokens']:
+                answer_data.append((user_id, label, answer_num, 0, np.nan))
                 continue
-
-            ans_score = self._answer_score_by_pos_tags(user_pos_data['tokens'], user_pos_data['posTags'])
-
-            if not ans_score:
-                continue
-
-            sum_scores += ans_score
-            scores_counter += 1
-
-        return sum_scores/scores_counter if scores_counter > 0 else np.nan
+            ans_score, num_valid_words = self._answer_score_by_pos_tags(
+                user_pos_data['tokens'], user_pos_data['posTags'])
+            answer_data.append((user_id, label, answer_num, num_valid_words, ans_score))
+        return answer_data
 
     def _answer_score_by_pos_tags(self, answer, pos_tags):
         """
@@ -126,17 +125,14 @@ class POSSlidingWindow:
             previous_valid_word = word
 
         if not valid_words:
-            return None
-        # skip sentences too short
-        if len(valid_words) < self._question_minimum_length or len(valid_words) > self._question_maximum_length:
-            return None
+            return None, 0
 
         scores = self._answer_scores_forward_window(valid_words)
 
-        ans_avg_scores = None
+        ans_avg_score = None
         if scores:
-            ans_avg_scores = sum(scores) / len(scores)
-        return ans_avg_scores
+            ans_avg_score = sum(scores) / len(scores)
+        return ans_avg_score, len(valid_words)
 
     def _answer_scores_forward_window(self, valid_words):
         scores = []
