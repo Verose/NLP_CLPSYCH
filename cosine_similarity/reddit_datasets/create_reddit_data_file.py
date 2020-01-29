@@ -12,7 +12,8 @@ from common.utils import DATA_DIR
 
 dataset_labels = {
     'rsdd': ['control', 'depression'],
-    'smhd': ['control', 'schizophrenia']
+    'smhd': ['control', 'schizophrenia'],
+    'tssd': ['control', 'schizophrenia'],
 }
 
 
@@ -35,7 +36,7 @@ def handle_user_info(user_id, labels, num_posts, df):
 if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option('--folder', action="store", default='')
-    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    parser.add_option('--dataset', choices=['rsdd', 'smhd', 'tssd'], default='rsdd', action="store")
     parser.add_option('--min_posts', default=None, type=int, action="store")
     options, _ = parser.parse_args()
 
@@ -58,8 +59,7 @@ if __name__ == "__main__":
             df = handle_user_info(user_id, labels, len(user_info['posts']), df)
         df.to_csv(os.path.join('..', DATA_DIR, 'all_data_{}.csv'.format(dataset)), index=False)
     else:
-        json_pattern = os.path.join('..', DATA_DIR, 'pos_tags_{}_embeds_filtered'.format(dataset), options.folder,
-                                    '*.json')
+        json_pattern = os.path.join('..', DATA_DIR, options.folder, '*.json')
         json_files = [pos_json for pos_json in glob.glob(json_pattern)]
 
         for jfile in tqdm(json_files, file=sys.stdout, total=len(json_files),
@@ -69,5 +69,6 @@ if __name__ == "__main__":
                 user_info = json.load(f)
                 labels = [user_info['label']]
                 df = handle_user_info(user_id, labels, len(user_info['tokens']), df)
-        filename = 'all_data_{}_{}{}.csv'.format(dataset, options.folder, '_' + str(min_posts) if min_posts else '')
+        filename = 'all_data_{}_{}{}.csv'.format(dataset, options.folder.replace('/', '_'),
+                                                 '_' + str(min_posts) if min_posts else '')
         df.to_csv(os.path.join('..', DATA_DIR, filename), index=False)
