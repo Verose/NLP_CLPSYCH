@@ -113,7 +113,7 @@ def count_participants_datafile():
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
-    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    parser.add_option('--dataset', choices=['rsdd', 'smhd', 'tssd'], default='rsdd', action="store")
     parser.add_option('--svd', default=False, action="store_true")
     parser.add_option('--count_posts', default=False, action="store_true")
     parser.add_option('--count_users', default=False, action="store_true")

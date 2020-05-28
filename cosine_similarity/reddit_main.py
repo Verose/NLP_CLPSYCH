@@ -92,7 +92,7 @@ def cosine_similarity_several_window_sizes(window_sizes):
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option('--dataset', choices=['rsdd', 'smhd'], default='rsdd', action="store")
+    parser.add_option('--dataset', choices=['rsdd', 'smhd', 'tssd'], default='rsdd', action="store")
     options, _ = parser.parse_args()
 
     LOGGER.info('Starting: ' + str(datetime.datetime.now()))
