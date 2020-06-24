@@ -6,7 +6,7 @@ from scipy.stats import stats
 from sklearn.metrics.pairwise import cosine_similarity
 
 from common.utils import pos_tags_jsons_generator, DATA_DIR, OUTPUTS_DIR, \
-    load_model, get_sets_words, read_relevant_set, read_reference_set
+    load_model, read_relevant_set, read_reference_set
 from dependency_parser.generate_relevant_sets import repair_document
 from dependency_parser.idf_scores import IdfScores
 
@@ -35,7 +35,7 @@ class DependencyCosSimScorer:
             self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
 
         # init model
-        self._model = load_model(get_sets_words(), 'cc.he.300.vec')
+        self._model = load_model('word2vec.pickle')
 
         # calculate idf scores for words
         self._idf_scores = IdfScores(self.get_documents(), repair_document)
