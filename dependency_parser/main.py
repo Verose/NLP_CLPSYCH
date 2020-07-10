@@ -24,12 +24,7 @@ def main():
     patients = (df_res[df_res['label'] == 'patient']['id'].values, 'patients')
 
     dep_scorer = DependencyCosSimScorer()
-
-    users_scores = {}
-    for group, group_name in [control, patients]:
-        for user in group:
-            user_scores = dep_scorer.cos_sim_score_for_user(user, group_name)
-            users_scores[user] = user_scores
+    users_scores = dep_scorer.cos_sim_scores_per_user(control, patients)
 
     avgs_nouns, avgs_verbs = dep_scorer.all_users_scores(control[0], users_scores)
     control_scores = dep_scorer.score_group(avgs_nouns, avgs_verbs)

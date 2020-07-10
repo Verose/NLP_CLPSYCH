@@ -35,7 +35,7 @@ class DependencyCosSimScorer:
             self._answers_to_user_id_pos_data[answer_num] = ans_pos_tags
 
         # init model
-        self._model = load_model('word2vec.pickle')
+        self._model = load_model('word2vec_dep.pickle')
 
         # calculate idf scores for words
         self._idf_scores = IdfScores(self.get_documents(), repair_document)
@@ -92,6 +92,27 @@ class DependencyCosSimScorer:
         avg_verbs = np.mean(flat_verbs_scores)
         return avg_nouns, avg_verbs
 
+    def cos_sim_scores_per_user(self, control, patients):
+        def calc_mean(scores):
+            return pd.np.nanmean(scores) if len(scores) > 0 else pd.np.nan
+
+        users_scores = {}
+        results = []
+
+        for group, group_name in [control, patients]:
+            for user in group:
+                user_scores = self.cos_sim_score_for_user(user, group_name)
+                users_scores[user] = user_scores
+                [results.append(
+                    (user, group_name, ans_num, calc_mean(ans_score[0]), calc_mean(ans_score[1])))
+                    for ans_num, ans_score in user_scores.items()]
+
+        columns = ["user_id", "label", "answer_num", "noun", "verb"]
+        results_df = pd.DataFrame(results, columns=columns)
+        results_df.to_csv(os.path.join(DATA_DIR, "by_dep_scores.csv"), index=False)
+
+        return users_scores
+
     def cos_sim_score_for_user(self, user, group):
         scores = {}
 
@@ -101,6 +122,7 @@ class DependencyCosSimScorer:
             ans_verb_scores = []
 
             if not pos_data['lemmas']:
+                scores[answer_num] = ([], [])
                 continue
             pos_tags = pos_data['posTags']
             words = pos_data['lemmas']
