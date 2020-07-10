@@ -109,7 +109,7 @@ class DependencyCosSimScorer:
 
         columns = ["user_id", "label", "answer_num", "noun", "verb"]
         results_df = pd.DataFrame(results, columns=columns)
-        results_df.to_csv(os.path.join(DATA_DIR, "by_incoherence_scores.csv"), index=False)
+        results_df.to_csv(os.path.join(DATA_DIR, "BY_incoherence_scores.csv"), index=False)
 
         return users_scores
 
