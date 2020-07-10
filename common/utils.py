@@ -3,6 +3,7 @@ import json
 import os
 import pickle
 
+import numpy as np
 
 OUTPUTS_DIR = os.environ['OUTPUT_DIRS'] if 'OUTPUT_DIRS' in os.environ else os.path.join('..', 'outputs')
 DATA_DIR = os.environ['DATA_DIR'] if 'DATA_DIR' in os.environ else os.path.join('..', 'data')
@@ -50,6 +51,20 @@ def load_model(word_embeddings_file):
     data_path = os.path.join(DATA_DIR, 'ft_pretrained', word_embeddings_file)
     with open(data_path, 'rb') as f:
         model = pickle.load(f)
+    return model
+
+
+def load_model_from_vec(words, word_embeddings_file="cc.he.300.vec"):
+    model = {}
+    with open(os.path.join(DATA_DIR, 'ft_pretrained', word_embeddings_file), encoding="utf-8") as embeddings:
+        for line in embeddings:
+            values = line.split(" ")
+            if values[0] in words:
+                model[values[0]] = np.array([float(val) for val in values[1:]])
+
+    save_path = os.path.join(DATA_DIR, 'ft_pretrained', 'word2vec_dep.pickle')
+    with open(save_path, 'wb') as f:
+        pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
     return model
 
 
