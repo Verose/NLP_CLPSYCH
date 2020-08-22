@@ -3,12 +3,18 @@ This is the code for the paper: Semantic Characteristics of Schizophrenic Speech
 This was done as part of Vered Zilberstein's M.Sc research thesis in Computer Science at Tel Aviv University.
 
 
-
+  * [High Level Design and Flow](#high-level-design-and-flow)
   * [Publications](#publications)
   * [Abstract](#Abstract)
   * [Video](#Video)
   * [Citation](#citation)
 
+
+## High Level Design and Flow
+
+A much more detailed explanation is available in the paper.
+
+![Semantic Characteristics of Schizophrenic Speech Design](https://github.com/Verose/NLP_CLPSYCH/blob/master/Semantic%20Characteristics%20of%20Schizophrenic%20Speech%20Design.png)
 
 
 ## Publications
