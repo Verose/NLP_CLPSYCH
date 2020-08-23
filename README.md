@@ -8,6 +8,7 @@ This was done as part of Vered Zilberstein's M.Sc research thesis in Computer Sc
   * [Abstract](#Abstract)
   * [Video](#Video)
   * [Citation](#citation)
+  * [License](#license)
 
 
 ## High Level Design and Flow
@@ -64,3 +65,7 @@ If you would like to cite this research, we would appreciate the following citat
     abstract = "Natural language processing tools are used to automatically detect disturbances in transcribed speech of schizophrenia inpatients who speak Hebrew. We measure topic mutation over time and show that controls maintain more cohesive speech than inpatients. We also examine differences in how inpatients and controls use adjectives and adverbs to describe content words and show that the ones used by controls are more common than the those of inpatients. We provide experimental results and show their potential for automatically detecting schizophrenia in patients by means only of their speech patterns.",
 }
 ```
+
+## License
+
+This software is released under the [Apache License, Version 2.0](https://github.com/Verose/NLP_CLPSYCH/blob/master/LICENSE).
