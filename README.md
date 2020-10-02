@@ -24,16 +24,14 @@ A much more detailed explanation is available in the paper.
 
 ## Abstract
 
-Natural language processing tools are used
-to automatically detect disturbances in transcribed speech of schizophrenia inpatients
-who speak Hebrew. We measure topic mutation over time and show that controls maintain more cohesive speech than inpatients. We
-also examine differences in how inpatients and
-controls use adjectives and adverbs to describe
-content words and show that the ones used
-by controls are more common than the those
-of inpatients. We provide experimental results and show their potential for automatically
-detecting schizophrenia in patients by means
-only of their speech patterns.
+Natural language processing tools are used to automatically detect disturbances in transcribed speech of
+schizophrenia inpatients who speak Hebrew. We measure topic mutation over time and show that controls
+maintain more cohesive speech than inpatients. We also examine differences in how inpatients and controls
+use adjectives and adverbs to describe content words and show that the ones used by controls are more
+common than those of inpatients. We provide experimental results and show their potential for automatically
+detecting schizophrenia in patients by means only of their speech patterns. We then explore our findings
+on publicly published written text taken from social media, which does not show a significant difference in
+keeping cohesive discourse.
 
 ## Video
 
