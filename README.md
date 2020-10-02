@@ -13,9 +13,22 @@ This was done as part of Vered Zilberstein's M.Sc research thesis in Computer Sc
 
 ## High Level Design and Flow
 
+This describes the design and flow and data into experiments:  
+Input: transcribed **speech** of schizophrenia inpatients who speak Hebrew  
+Experiment 1: measures derailment (topic mutation) in speech over time using word semantics  
+Experiment 2: measures incoherence by examining differences in usage of adjectives and adverbs (word modifiers) to describe content words  
+Classification: takes scores calculated from both experiments and use them in a supervised classification task  
 A much more detailed explanation is available in the paper.
 
-![Semantic Characteristics of Schizophrenic Speech Design](https://github.com/Verose/NLP_CLPSYCH/blob/master/Semantic%20Characteristics%20of%20Schizophrenic%20Speech%20Design.png)
+![Semantic Characteristics of Schizophrenic Speech Design](./Semantic%20Characteristics%20of%20Schizophrenic%20Speech%20Design.png)
+
+  
+We run the first experiment on **written text**, taken from two social-media corpora.
+RSDD: Reddit self-reported depression diagnosis dataset - an existing dataset
+TSSD: Twitter self-reported Schizophrenia diagnoses - our own collected dataset
+
+![Speech Social Media Design](./Social%20Media%20Experiments.png)
+
 
 
 ## Publications
