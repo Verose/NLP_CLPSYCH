@@ -3,7 +3,8 @@ This is the code for the paper: Semantic Characteristics of Schizophrenic Speech
 This was done as part of Vered Zilberstein's M.Sc research thesis in Computer Science at Tel Aviv University.
 
 
-  * [High Level Design and Flow](#high-level-design-and-flow)
+  * [Experiments - Transcribed Speech](#experiments---transcribed-speech)
+  * [Experiments - Social Media](#experiments---social-media)
   * [Publications](#publications)
   * [Abstract](#Abstract)
   * [Video](#Video)
@@ -11,24 +12,54 @@ This was done as part of Vered Zilberstein's M.Sc research thesis in Computer Sc
   * [License](#license)
 
 
-## High Level Design and Flow
+## Experiments - Transcribed Speech
+A much more detailed explanation is available in the paper.  
 
-This describes the design and flow and data into experiments:  
-Input: transcribed **speech** of schizophrenia inpatients who speak Hebrew  
-Experiment 1: measures derailment (topic mutation) in speech over time using word semantics  
-Experiment 2: measures incoherence by examining differences in usage of adjectives and adverbs (word modifiers) to describe content words  
-Classification: takes scores calculated from both experiments and use them in a supervised classification task  
-A much more detailed explanation is available in the paper  
+#### Input: 
+Transcribed **speech** of schizophrenia inpatients who speak Hebrew.  
+#### Experiment 1:
+Measures derailment (topic mutation) in speech over time using word semantics.  
+#### Experiment 2:
+Measures incoherence by examining differences in usage of adjectives and adverbs (word modifiers) to describe content words.  
+#### Classification: 
+Takes scores calculated from both experiments and use them in a supervised classification task.  
 
+### Results
+#### Experiment 1
+When using all words, we could not detect a significant difference between patients and controls.  
+However, when using content words only, patients scored lower on derailment than the controls, for all window widths k, suggesting that focusing only on content words is the more robust approach for calculating derailment.
+
+#### Experiment 2:
+Controls have significantly higher scores for both modifier types, indicating a higher agreement on modifiers by the controls and external writers.
+
+#### Classification:
+Train several classifiers to distinguish between controls and patients. represent participants with the characteristics we compute in the two experiments. Random Forest achieves the highest accuracy of ~81%.
+
+### High Level Design and Flow
+
+This describes the design and flow of data into both experiments:  
 ![Semantic Characteristics of Schizophrenic Speech Design](./Semantic%20Characteristics%20of%20Schizophrenic%20Speech%20Design.png)
 
-  
-We run the first experiment on **written text**, taken from two social-media corpora  
-RSDD: Reddit self-reported depression diagnosis dataset - an existing dataset  
-TSSD: Twitter self-reported Schizophrenia diagnoses - our own collected dataset  
+## Experiments - Social Media
+We run the Experiment 1 on **written text**, taken from two social-media corpora  
+### RSDD: 
+Reddit self-reported depression diagnosis dataset - an existing dataset, as a source for users who are self-reported diagnosed with depression as well as a controls group. 
+### TSSD: 
+Twitter self-reported Schizophrenia diagnoses - our own collection of users who are self-reported diagnosed with schizophrenia as well as a controls group.  
+Relevant code is available [here](https://github.com/Verose/Schizo_DS).
+
+### Results
+#### RSDD:
+There is no significant difference between diagnosed users and controls.  
+This result is expected, because depression patients do not tend to show derailment symptoms.
+
+#### TSSD:
+There is no significant difference between the groups.  
+We suspect these results arise from Twitter being a medium for short, less-informative posts. It is also possible that written text is not as spontaneous as free speech, giving users time to organize their thoughts and edit multiple times before posting.
+
+### High Level Design and Flow
 
 ![Speech Social Media Design](./Social%20Media%20Experiments.png)
-
 
 
 ## Publications
