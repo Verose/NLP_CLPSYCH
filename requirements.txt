@@ -23,5 +23,5 @@ scipy==1.1.0
 six==1.11.0
 smart-open==1.7.1
 tqdm==4.28.1
-urllib3==1.25.7
+urllib3==1.26.5
 xgboost==0.81
